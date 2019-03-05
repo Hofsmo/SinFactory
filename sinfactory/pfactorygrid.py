@@ -100,6 +100,9 @@ class PFactoryGrid(object):
         # Find column that holds results of interest
         col_idx = self.app.ResGetIndex(self.res, element, var_name)
 
+        if col_idx == -1:
+            raise ValueError("Could not find : " + elm_name)
+
         # Get time steps in the result file
         t_steps = self.app.ResGetValueCount(self.res, 0)
 

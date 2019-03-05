@@ -11,7 +11,7 @@ def test_run_dynamic_simulation():
     project_name = "sinfactory"
     study_case_name = "Tests"
 
-    monitor = {"SM.ElmSym": "fe:bus1"}
+    monitor = {"SM.ElmSym": ["n:fe:bus1"]}
 
     sim = PFactoryGrid(project_name=project_name,
                        study_case_name=study_case_name)
@@ -20,6 +20,6 @@ def test_run_dynamic_simulation():
 
     sim.run_dynamic_sim()
 
-    _, f = sim.get_dynamic_results("SM.ElmSym", "fe:bus1")
+    _, f = sim.get_dynamic_results("SM.ElmSym", "n:fe:bus1")
 
-    assert f[100] == pytest.approx(1.0)
+    assert f[20] == pytest.approx(1.0)
