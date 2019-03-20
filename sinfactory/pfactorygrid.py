@@ -116,3 +116,35 @@ class PFactoryGrid(object):
             values[i] = self.app.ResGetData(self.res, i, col_idx)[1]
 
         return time, values
+
+    def set_all_loads(self, p_load, q_load):
+        """Method for setting all loads powers.
+
+        Args:
+            p_load (Dict): Dictionary where the key is the name of the load
+                and the value is the new load value.
+            q_load (Dict): Dictionary where the key is the name of the load
+                and the value is the new load value.
+        """
+        # Collect all load elements
+        loads = self.app.GetCalcRelevantObjects("*.ElmLod")
+        # Set active and reactive load values
+        for load in loads:
+            load.plini = p_load[load.loc_name]
+            load.qlini = q_load[load.loc_name]
+
+    def set_all_generators(self, p_load, q_load):
+        """Method for setting all generator_powers.
+
+        Args:
+            p_load (Dict): Dictionary where the key is the name of the
+                generator and the value is the new load value.
+            q_load (Dict): Dictionary where the key is the name of the
+                generator and the value is the new load value.
+        """
+        # Collect all load elements
+        gens = self.app.GetCalcRelevantObjects("*.ElmSym")
+        # Set active and reactive load values
+        for gen in gens:
+            gen.plini = p_load[gen.loc_name]
+            gen.qlini = q_load[gen.loc_name]
