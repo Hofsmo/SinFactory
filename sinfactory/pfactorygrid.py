@@ -148,3 +148,25 @@ class PFactoryGrid(object):
         for gen in gens:
             gen.plini = p_load[gen.loc_name]
             gen.qlini = q_load[gen.loc_name]
+
+    def set_out_of_service(self, elm_name):
+        """Take an element out of service.
+
+        Args:
+            elm_name: Name of elements to take out of service.
+        """
+        # Collect all elements that match elm_name
+        elms = self.app.GetCalcRelevantObjects(elm_name)
+        for elm in elms:
+            elm.outserv = True
+
+    def set_in_service(self, elm_name):
+        """Take an element back in service.
+
+        Args:
+            elm_name: Name of elements to take out of service.
+        """
+        # Collect all elements that match elm_name
+        elms = self.app.GetCalcRelevantObjects(elm_name)
+        for elm in elms:
+            elm.outserv = False
