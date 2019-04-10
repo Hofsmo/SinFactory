@@ -170,3 +170,86 @@ class PFactoryGrid(object):
         elms = self.app.GetCalcRelevantObjects(elm_name)
         for elm in elms:
             elm.outserv = False
+
+    def create_short_circuit(self, target_name, time, name):
+        """Create a three phase short circuit.
+
+        Args:
+            target_name: Component to short.
+            time: Start time of the short circuit.
+            name: Name of the event.
+        """
+        # Get the element where the fault is applied
+        target = self.app.GetCalcRelevantObjects(target_name)
+
+        # Get the event folder
+        evt_folder = self.app.GetFromStudyCase("IntEvt")
+
+        # Create an empty short circuit event
+        evt_folder.CreateObject("EvtShc", name)
+
+        # Get the empty short circuit event
+        sc = evt_folder.GetContents(name+".EvtShc")[0]
+
+        # Set time, target and type of short circuit
+        sc.time = time
+        sc.p_target = target[0]
+        sc.i_shc = 0
+
+    def delete_short_circuit(self, name):
+        """Delete a short circuit event.
+
+        Args:
+            name: Name of the event.
+         """
+        # Get the event folder
+        evt_folder = self.app.GetFromStudyCase("IntEvt")
+
+        # Find the short circuit and clear event to delete
+        sc = evt_folder.GetContents(name+".EvtShc")
+        scc = evt_folder.GetContents(name+"_clear"+".EvtShc")
+        if sc:
+            sc[0].Delete()
+        if scc:
+            scc[0].Delete()
+
+    def create_switch_event(self, target_name, time, name):
+        """Create a switching event.
+
+        Args:
+            target_name: Component to switch.
+            time: When to switch
+            name: Name of the event.
+        """
+        # Get the element where the fault is applied
+        target = self.app.GetCalcRelevantObjects(target_name)
+
+        # Get the event folder
+        evt_folder = self.app.GetFromStudyCase("IntEvt")
+
+        # Create an empty switch event
+        evt_folder.CreateObject("EvtSwitch", name)
+
+        # Get the empty switch event
+        sw = evt_folder.GetContents(name+".EvtSwitch")[0]
+
+        # Set time, target and type of short circuit
+        sw.time = time
+        sw.p_target = target[0]
+    
+    def delete_switch_event(self, name):
+        """Delete a switch event.
+
+        Args:
+            name: Name of the event.
+         """
+        # Get the event folder
+        evt_folder = self.app.GetFromStudyCase("IntEvt")
+
+        # Find the switch event and clear event to delete
+        sw = evt_folder.GetContents(name+".EvtSwitch")
+        sww = evt_folder.GetContents(name+"_clear"+".EvtSwitch")
+        if sw:
+            sw[0].Delete()
+        if sww:
+            sww[0].Delete()

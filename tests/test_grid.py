@@ -30,7 +30,7 @@ def test_run_dynamic_simulation(test_system):
 
 def test_change_load(test_system):
     """Check if a load can be changed"""
-    p_load = {"Load": 1}
+    p_load = {"Load": 10}
     q_load = {"Load": 0}
 
     monitor = {"Load.ElmLod": ["m:P:bus1"]}
@@ -42,4 +42,62 @@ def test_change_load(test_system):
 
     _, p = test_system.get_dynamic_results("Load.ElmLod", "m:P:bus1")
 
-    assert p[20] == pytest.approx(1.0, abs=0.01)
+    assert p[20] == pytest.approx(10.0, abs=0.01)
+
+
+def test_create_short_circuit(test_system):
+    """Check if a short circuit can be created"""
+
+    monitor = {"Terminal 2.ElmTerm": ["m:u"]}
+
+    test_system.create_short_circuit("Line.ElmLne", 0.1, "sc")
+
+    test_system.prepare_dynamic_sim(variables=monitor)
+
+    test_system.run_dynamic_sim()
+
+    _, v = test_system.get_dynamic_results("Terminal 2.ElmTerm", "m:u")
+
+    assert v[-1] < 0.1
+
+
+def test_delete_short_circuit(test_system):
+    """Check if a short circuit can be deleted."""
+
+    monitor = {"Terminal 2.ElmTerm": ["m:u"]}
+
+    test_system.delete_short_circuit("sc")
+
+    test_system.prepare_dynamic_sim(variables=monitor)
+
+    test_system.run_dynamic_sim()
+
+    _, v = test_system.get_dynamic_results("Terminal 2.ElmTerm", "m:u")
+
+    assert v[-1] == pytest.approx(1.0, abs=0.01)
+
+
+def test_create_switch_evemt(test_system):
+    """Check if a switch event can be created."""
+
+    test_system.create_switch_event("CB.ElmCoup", 0.1, "sw")
+    monitor = {"Line.ElmLne": ["m:I:bus1"]}
+    test_system.prepare_dynamic_sim(variables=monitor)
+    test_system.run_dynamic_sim()
+
+    _, i = test_system.get_dynamic_results("Line.ElmLne", "m:I:bus1")
+
+    assert i[-1] == pytest.approx(0.0, abs=0.01)
+
+
+def test_delete_switch_evemt(test_system):
+    """Check if a switch event can be created."""
+
+    monitor = {"Line.ElmLne": ["m:I:bus1"]}
+    test_system.delete_switch_event("sw")
+    test_system.prepare_dynamic_sim(variables=monitor)
+    test_system.run_dynamic_sim()
+
+    _, i = test_system.get_dynamic_results("Line.ElmLne", "m:I:bus1")
+
+    assert i[-1] > 0.5
