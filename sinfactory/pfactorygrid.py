@@ -117,7 +117,7 @@ class PFactoryGrid(object):
 
         return time, values
 
-    def set_all_loads(self, p_load, q_load):
+    def set_load_powers(self, p_load, q_load):
         """Method for setting all loads powers.
 
         Args:
@@ -130,24 +130,26 @@ class PFactoryGrid(object):
         loads = self.app.GetCalcRelevantObjects("*.ElmLod")
         # Set active and reactive load values
         for load in loads:
-            load.plini = p_load[load.loc_name]
-            load.qlini = q_load[load.loc_name]
+            if load.loc_name in p_load:
+                load.plini = p_load[load.loc_name]
+                load.qlini = q_load[load.loc_name]
 
-    def set_all_generators(self, p_load, q_load):
+    def set_generator_powers(self, p_gen, q_gen):
         """Method for setting all generator_powers.
 
         Args:
-            p_load (Dict): Dictionary where the key is the name of the
-                generator and the value is the new load value.
-            q_load (Dict): Dictionary where the key is the name of the
-                generator and the value is the new load value.
+            p_gen (Dict): Dictionary where the key is the name of the
+                generator and the value is the new active power value.
+            q_gen (Dict): Dictionary where the key is the name of the
+                generator and the value is the new reactive power value.
         """
-        # Collect all load elements
+        # Collect all generator elements
         gens = self.app.GetCalcRelevantObjects("*.ElmSym")
-        # Set active and reactive load values
+        # Set active and reactive power values
         for gen in gens:
-            gen.plini = p_load[gen.loc_name]
-            gen.qlini = q_load[gen.loc_name]
+            if gen.loc_name in p_gen:
+                gen.plini = p_gen[gen.loc_name]
+                gen.qlini = q_gen[gen.loc_name]
 
     def set_out_of_service(self, elm_name):
         """Take an element out of service.
@@ -236,7 +238,7 @@ class PFactoryGrid(object):
         # Set time, target and type of short circuit
         sw.time = time
         sw.p_target = target[0]
-    
+
     def delete_switch_event(self, name):
         """Delete a switch event.
 

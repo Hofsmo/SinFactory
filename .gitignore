@@ -120,3 +120,6 @@ dmypy.json
 
 # ignore idea folder
 .idea
+
+# ignore backup files
+*.swp

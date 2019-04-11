@@ -34,7 +34,7 @@ def test_change_load(test_system):
     q_load = {"Load": 0}
 
     monitor = {"Load.ElmLod": ["m:P:bus1"]}
-    test_system.set_all_loads(p_load, q_load)
+    test_system.set_load_powers(p_load, q_load)
 
     test_system.prepare_dynamic_sim(variables=monitor)
 
