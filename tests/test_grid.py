@@ -45,12 +45,33 @@ def test_change_load(test_system):
     assert p[20] == pytest.approx(10.0, abs=0.01)
 
 
+def test_change_gen(test_system):
+    """Check if a load can be changed"""
+    p_gen = {"SM": 18}
+    q_gen = {"SM": 0}
+
+    monitor = {"SM.ElmSym": ["m:P:bus1"]}
+    test_system.set_generator_powers(p_gen, q_gen)
+
+    test_system.prepare_dynamic_sim(variables=monitor)
+
+    test_system.run_dynamic_sim()
+
+    _, p = test_system.get_dynamic_results("SM.ElmSym", "m:P:bus1")
+
+    assert p[20] == pytest.approx(18.0, abs=0.01)
+
+
 def test_create_short_circuit(test_system):
     """Check if a short circuit can be created"""
 
     monitor = {"Terminal 2.ElmTerm": ["m:u"]}
 
     test_system.create_short_circuit("Line.ElmLne", 0.1, "sc")
+
+    p_gen = {"SM": 0}
+    q_gen = {"SM": 0}
+    test_system.set_generator_powers(p_gen, q_gen)
 
     test_system.prepare_dynamic_sim(variables=monitor)
 

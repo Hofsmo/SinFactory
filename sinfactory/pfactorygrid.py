@@ -148,8 +148,8 @@ class PFactoryGrid(object):
         # Set active and reactive power values
         for gen in gens:
             if gen.loc_name in p_gen:
-                gen.plini = p_gen[gen.loc_name]
-                gen.qlini = q_gen[gen.loc_name]
+                gen.pgini = p_gen[gen.loc_name]
+                gen.qgini = q_gen[gen.loc_name]
 
     def set_out_of_service(self, elm_name):
         """Take an element out of service.
