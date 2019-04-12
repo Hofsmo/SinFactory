@@ -122,3 +122,14 @@ def test_delete_switch_evemt(test_system):
     _, i = test_system.get_dynamic_results("Line.ElmLne", "m:I:bus1")
 
     assert i[-1] > 0.5
+
+
+def test_change_inertia_constant(test_system):
+    """Check if the inertia of a machine can be changed."""
+    h_constant = 6
+    test_system.change_generator_inertia_constant("28 MVA GT.TypSym",
+                                                  h_constant)
+
+    elm = test_system.app.GetCalcRelevantObjects("28 MVA GT.TypSym")
+
+    assert elm[0].h == h_constant
