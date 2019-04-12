@@ -68,7 +68,7 @@ class PFactoryGrid(object):
         # Set time options
         self.inc.tstart = start_time
         self.inc.dtgrid = step_size
-        self.inc.tstop = end_time
+        self.sim.tstop = end_time
 
         # Calculate initial conditions
         self.inc.Execute()
