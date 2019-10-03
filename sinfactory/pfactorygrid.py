@@ -265,3 +265,13 @@ class PFactoryGrid(object):
         """
         elms = self.app.GetCalcRelevantObjects(name)
         elms[0].h = value
+
+    def change_grid_min_short_circuit_power(self, name, value):
+        """Change the minimum short circuit power of an external grid.
+
+        Args:
+            name: Name of the external grid.
+            value: The minimum short circuit power value.
+        """
+        elms = self.app.GetCalcRelevantObjects(name)
+        elms[0].snssmin = value
