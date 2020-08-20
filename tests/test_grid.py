@@ -46,8 +46,8 @@ def test_change_load(test_system):
 
 
 def test_change_gen(test_system):
-    """Check if a load can be changed"""
-    p_gen = {"SM": 18}
+    """Check if a generator can be changed"""
+    p_gen = {"SM": 10}
     q_gen = {"SM": 0}
 
     monitor = {"SM.ElmSym": ["m:P:bus1"]}
@@ -59,7 +59,7 @@ def test_change_gen(test_system):
 
     _, p = test_system.get_dynamic_results("SM.ElmSym", "m:P:bus1")
 
-    assert p[20] == pytest.approx(18.0, abs=0.01)
+    assert p[-1] == pytest.approx(10.0, abs=0.1)
 
 
 def test_create_short_circuit(test_system):
@@ -121,15 +121,15 @@ def test_delete_switch_evemt(test_system):
 
     _, i = test_system.get_dynamic_results("Line.ElmLne", "m:I:bus1")
 
-    assert i[-1] > 0.5
+    assert i[-1] > 0.05
 
 
 def test_change_inertia_constant(test_system):
     """Check if the inertia of a machine can be changed."""
     h_constant = 6
-    test_system.change_generator_inertia_constant("28 MVA GT.TypSym",
+    test_system.change_generator_inertia_constant("50 MVA ST.TypSym",
                                                   h_constant)
 
-    elm = test_system.app.GetCalcRelevantObjects("28 MVA GT.TypSym")
+    elm = test_system.app.GetCalcRelevantObjects("50 MVA ST.TypSym")
 
     assert elm[0].h == h_constant
