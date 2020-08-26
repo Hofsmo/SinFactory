@@ -1,9 +1,13 @@
 """Test the function interfacing with the grid."""
 
 import pytest
-
-from sinfactory.pfactorygrid import PFactoryGrid
-
+#import sys
+#sys.path.append('c:\\Users\\eirikh\\sinfactory\\sinfactory')
+import sys, os
+sys.path.append(os.path.abspath(os.path.join('..', 'sinfactory')))
+#print("System path:") 
+#print(sys.path)
+from sinfactory.pfactorygrid import PFactoryGrid as PFactoryGrid
 
 @pytest.fixture(scope="module")
 def test_system():
@@ -27,6 +31,14 @@ def test_run_dynamic_simulation(test_system):
 
     assert f[20] == pytest.approx(1.0)
 
+def test_get_total_load(test_system): 
+    assert test_system.get_total_load() == 10
+
+def test_get_total_gen(test_system): 
+    assert test_system.get_total_gen() == 0
+
+def test_machine_gen(test_system): 
+    assert test_system.get_machine_gen("SM.ElmSym") == 0
 
 def test_change_load(test_system):
     """Check if a load can be changed"""

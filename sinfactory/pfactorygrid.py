@@ -4,13 +4,12 @@ import os
 import numpy as np
 import powerfactory as pf
 
-
 class PFactoryGrid(object):
     """Class for interfacing with powerfactory."""
     def __init__(self, project_name, study_case_name, folder_name=''):
         """Class constructor."""
         # Start PowerFactory.
-        self.app = pf.GetApplication()
+        self.app = pf.GetApplication() #powerfactory.application object created and returned 
 
         if self.app is None:
             raise RuntimeError("Failed to load powerfactory.")
@@ -24,6 +23,8 @@ class PFactoryGrid(object):
 
         # Activate study case.
         study_case_folder = self.app.GetProjectFolder('study')
+        print("Case study name:") 
+        print(study_case_name)
         study_case_file = study_case_name + '.IntCase'
         self.study_case = study_case_folder.GetContents(study_case_file)[0]
         self.study_case.Activate()
@@ -79,6 +80,7 @@ class PFactoryGrid(object):
         Returns:
             bool: False for success, True otherwise.
         """
+        
         return bool(self.sim.Execute())
 
     def get_dynamic_results(self, elm_name, var_name):
@@ -93,7 +95,6 @@ class PFactoryGrid(object):
         """
         # Get network element of interest.
         element = self.app.GetCalcRelevantObjects(elm_name)[0]
-
         # Load results from file.
         self.app.ResLoadData(self.res)
 
@@ -150,6 +151,39 @@ class PFactoryGrid(object):
             if gen.loc_name in p_gen:
                 gen.pgini = p_gen[gen.loc_name]
                 gen.qgini = q_gen[gen.loc_name]
+
+    def get_total_load(self):   
+        """ Get total active load of all buses """
+        # Collect all load elements
+        loads = self.app.GetCalcRelevantObjects("*.ElmLod")
+        # Sum up load values
+        load_tot = 0
+        for load in loads:
+            load_tot = load_tot + load.plini
+        return load_tot
+
+    def get_total_gen(self):   
+        """ Get total active power generation of all buses """
+        # Get all generator elements
+        gens = self.app.GetCalcRelevantObjects("*.ElmSym") # ElmSym data object
+        # Sum up generation values
+        gen_tot = 0
+        for gen in gens:
+            gen_tot = gen_tot + gen.pgini
+        return gen_tot
+
+    def get_machine_gen(self, elm_name): 
+        machine = self.app.GetCalcRelevantObjects(elm_name) # return list with one element
+        gen = machine[0].pgini
+        return gen
+
+    def change_bus_load(self, elm_name, new_load):
+        load = self.app.GetCalcRelevantObjects(elm_name) # return list with one element
+        load[0].plini = new_load
+
+    def change_machine_gen(self, elm_name, new_gen):
+        machine = self.app.GetCalcRelevantObjects(elm_name) # return list with one element
+        machine[0].pgini = new_gen
 
     def set_out_of_service(self, elm_name):
         """Take an element out of service.
@@ -275,3 +309,21 @@ class PFactoryGrid(object):
         """
         elms = self.app.GetCalcRelevantObjects(name)
         elms[0].snssmin = value
+
+    def get_machines_inertia_list(self, omega_0):
+        """
+        Function to get array of all machines inertias,'M', corresponding to
+        2HS/omega_0. 
+        The file 'generator_type.txt' has to be in the same folder as 
+        this file 
+
+        """
+        #generator types (ed up with H array) 
+        machine_list = self.app.GetCalcRelevantObjects("*.ElmSym") 
+        machine_type = []
+        for machine in machine_list:
+            machine_type.append(machine.typ_id)
+        inertias = [] 
+        for machine in machine_type:
+            inertias.append(2*machine.sgn*machine.h/omega_0)
+        return inertias
