@@ -173,17 +173,76 @@ class PFactoryGrid(object):
         return gen_tot
 
     def get_machine_gen(self, elm_name): 
+        """ Get active power generation from a specific machine 
+
+        Args:
+            elm_name: Name of elements to get active power.
+        """
         machine = self.app.GetCalcRelevantObjects(elm_name) # return list with one element
         gen = machine[0].pgini
         return gen
 
-    def change_bus_load(self, elm_name, new_load):
-        load = self.app.GetCalcRelevantObjects(elm_name) # return list with one element
-        load[0].plini = new_load
+    def change_bus_load(self,bus_number,load):
+        """ Change load at a specific load 
 
-    def change_machine_gen(self, elm_name, new_gen):
-        machine = self.app.GetCalcRelevantObjects(elm_name) # return list with one element
-        machine[0].pgini = new_gen
+        Args: 
+            bus_number: name of bus the load is connected to (str)
+            load: value of new load in MW 
+        """
+        bus_name = "bus"+bus_number
+        cubs = self.app.GetCalcRelevantObjects("*.StaCubic")
+        for cub in cubs: 
+            if cub.cterm.loc_name == bus_name: #check if cub is connected to the bus
+                elm_type = cub.obj_id.GetClassName()
+                if elm_type == "ElmLod": #check if a connected element is a load
+                    elm_name = cub.obj_id.loc_name+".ElmLod"
+                    self.change_spec_bus_load(elm_name, load)
+
+        """" Alternative with these Args:
+            elm_name: Name of elements to change load.
+            new_load: value of active power which the load is chaning to
+
+            Code is simply:  
+            load = self.app.GetCalcRelevantObjects(elm_name) # return list with one element
+            load[0].plini = new_load
+        """ 
+
+    def change_machine_gen(self,machine,gen):
+        """ Change active power generation at a specific machine 
+
+        Args: 
+            machine: name of the machine 
+            gen: value of new generation in MW 
+        """
+        elm_name = machine+".ElmSym"
+        generator = self.app.GetCalcRelevantObjects(elm_name) # return list with one element
+        generator[0].pgini = new_gen
+
+    def get_area_gen(self, area_num):
+        """ Get total generation in a specific area 
+
+        Args:
+            area_num: Name of area which is of interest (i.e. "Area1")
+        """ 
+        gens = self.app.GetCalcRelevantObjects("*.ElmSym") # ElmSym data object
+        gen_tot_area = 0
+        for gen in gens:
+            if gen.cpArea.loc_name == area_num: 
+                gen_tot_area = gen_tot_area + gen.pgini
+        return gen_tot_area
+
+    def get_area_load(self, area_num):
+        """ Get total load in a specific area 
+
+        Args:
+            area_num: Name of area which is of interest (i.e. "Area1")
+        """ 
+        loads = self.app.GetCalcRelevantObjects("*.ElmLod") # ElmSym data object
+        load_tot_area = 0
+        for load in loads:
+            if load.cpArea.loc_name == area_num: 
+                load_tot_area = load_tot_area + load.plini
+        return load_tot_area
 
     def set_out_of_service(self, elm_name):
         """Take an element out of service.
@@ -314,8 +373,6 @@ class PFactoryGrid(object):
         """
         Function to get array of all machines inertias,'M', corresponding to
         2HS/omega_0. 
-        The file 'generator_type.txt' has to be in the same folder as 
-        this file 
 
         """
         #generator types (ed up with H array) 
@@ -327,3 +384,10 @@ class PFactoryGrid(object):
         for machine in machine_type:
             inertias.append(2*machine.sgn*machine.h/omega_0)
         return inertias
+    
+    def get_load_busses(self):
+        """ 
+        Function for getting the busses with loads as an array
+
+        """
+        print("HEI")
