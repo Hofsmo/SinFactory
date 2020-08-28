@@ -52,3 +52,7 @@ elif plot == "voltage":
     plt.ylabel("Voltage [p.u.]")
 
 plt.show()
+
+print("Generation and load of area 1:")
+print("Generation [MW]: ", test_obj.get_area_gen("Area1"))
+print("Load [MW]: ", test_obj.get_area_load("Area1"))
