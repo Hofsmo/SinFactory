@@ -56,3 +56,6 @@ plt.show()
 print("Generation and load of area 1:")
 print("Generation [MW]: ", test_obj.get_area_gen("Area1"))
 print("Load [MW]: ", test_obj.get_area_load("Area1"))
+
+test_obj.power_flow_calc() 
+test_obj.get_branch_flow(10021, 30023) 

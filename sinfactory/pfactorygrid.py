@@ -189,7 +189,7 @@ class PFactoryGrid(object):
             bus_number: name of bus the load is connected to (str)
             load: value of new load in MW 
         """
-        bus_name = "bus"+bus_number
+        bus_name = "bus"+str(bus_number)
         cubs = self.app.GetCalcRelevantObjects("*.StaCubic")
         for cub in cubs: 
             if cub.cterm.loc_name == bus_name: #check if cub is connected to the bus
@@ -390,4 +390,59 @@ class PFactoryGrid(object):
         Function for getting the busses with loads as an array
 
         """
-        print("HEI")
+        print("Hva skal denne gjøre? ")
+
+    def power_flow_calc(self):
+        """ Function for running power flow """
+        LDF = self.app.GetFromStudyCase("ComLdf")
+        LDF.Execute() 
+
+    def power_calc_converged(self):
+        """ Function for checking whether power flow calc converged """
+        print("Convergence check")
+
+
+    def gen_out_of_service(self,machine):
+        """ Function for setting generator out of service """
+        elm_name = machine+".ElmSym"
+        set_out_of_service(elm_name)
+    
+    def initiate_dynamic_sim(self,system,outputfile): 
+        # run prepare_dynamic_sim
+        raise NotImplementedError
+    
+    def get_branch_flow(self,bus_from,bus_to):
+        """ Function for getting the flow on a branch """  
+        bus_name_from = "bus"+str(bus_from)
+        bus_name_to = "bus"+str(bus_to)
+        cubs = self.app.GetCalcRelevantObjects("*.StaCubic")
+        for cub in cubs: 
+            if cub.cterm.loc_name == bus_name_from: #check if cub is connected to the bus
+                elm_type = cub.obj_id.GetClassName()
+                if elm_type == "ElmLne": #check if a connected element is a line
+                    line = cub.obj_id
+                    if line.bus1 or line.bus2 == bus_name_to:
+                        name = line.loc_name
+                        value = line.GetAttribute("c:loading")
+                        print("Loading of",name,"is", value, "%")
+                        return(value)
+    
+    def fault_branch(self,bus_from,bus_to):
+        """ Function for placing a fault on a branch """
+        raise NotImplementedError
+
+    def trip_branch(self, bus_from, bus_to):
+        """ Function for tripping a branch """ 
+        raise NotImplementedError
+
+    def get_channel_data(self,outputfile):
+        """ Function for getting the channel data """
+        raise NotImplementedError
+
+    def run_sim(self, time):
+        """ Function for running the simulation up to a given time """
+        print("See run_dynamic simulation")
+    
+    def run_sim_initial(self,time):
+        """ Function for running the simulation initially up to a given time """
+        print("See run_dynamic simulation")
