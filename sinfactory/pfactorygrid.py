@@ -387,10 +387,17 @@ class PFactoryGrid(object):
     
     def get_load_busses(self):
         """ 
-        Function for getting the busses with loads as an array
+        Function for getting the bus names with loads as an array
 
         """
-        print("Hva skal denne gjøre? ")
+        load_buses = []
+        cubs = self.app.GetCalcRelevantObjects("*.StaCubic")
+        for cub in cubs: 
+            elm_type = cub.obj_id.GetClassName()
+            if elm_type == "ElmLod":
+                load_buses.append(cub.cterm.loc_name) 
+        return load_buses
+        
 
     def power_flow_calc(self):
         """ Function for running power flow """
@@ -400,7 +407,6 @@ class PFactoryGrid(object):
     def power_calc_converged(self):
         """ Function for checking whether power flow calc converged """
         print("Convergence check")
-
 
     def gen_out_of_service(self,machine):
         """ Function for setting generator out of service """

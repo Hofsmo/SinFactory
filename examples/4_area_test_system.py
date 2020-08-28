@@ -59,3 +59,5 @@ print("Load [MW]: ", test_obj.get_area_load("Area1"))
 
 test_obj.power_flow_calc() 
 test_obj.get_branch_flow(10021, 30023) 
+load_buses = test_obj.get_load_busses() 
+print(load_buses) 
