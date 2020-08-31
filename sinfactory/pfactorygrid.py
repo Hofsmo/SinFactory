@@ -460,12 +460,15 @@ class PFactoryGrid(object):
         """ 
         # np.array containing the bus number and id of every generator in the network
         # PF: Attribute desc (description) contains bus nr and id
-        bus_nr = [] 
-        machine_id = [] 
+        bus_nr = []
+        machine_id = []
         machines = self.app.GetCalcRelevantObjects("*.ElmSym") 
         for machine in machines:
             bus_nr.append(int(machine.desc[0][0:5]))
             machine_id.append(int(machine.desc[0][6]))
-        machine_list = [bus_nr,machine_id]
+        bus_number = np.array(bus_nr)
+        machine_ID = np.array(machine_id)
+
+        machine_list = np.row_stack([bus_number,machine_ID])
         return machine_list
     
