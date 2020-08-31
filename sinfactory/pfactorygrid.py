@@ -368,22 +368,6 @@ class PFactoryGrid(object):
         """
         elms = self.app.GetCalcRelevantObjects(name)
         elms[0].snssmin = value
-
-    def get_machines_inertia_list(self, omega_0):
-        """
-        Function to get array of all machines inertias,'M', corresponding to
-        2HS/omega_0. 
-
-        """
-        #generator types (ed up with H array) 
-        machine_list = self.app.GetCalcRelevantObjects("*.ElmSym") 
-        machine_type = []
-        for machine in machine_list:
-            machine_type.append(machine.typ_id)
-        inertias = [] 
-        for machine in machine_type:
-            inertias.append(2*machine.sgn*machine.h/omega_0)
-        return inertias
     
     def get_load_busses(self):
         """ 
@@ -395,7 +379,7 @@ class PFactoryGrid(object):
         for cub in cubs: 
             elm_type = cub.obj_id.GetClassName()
             if elm_type == "ElmLod":
-                load_buses.append(cub.cterm.loc_name) 
+                load_buses.append(cub.cterm.loc_name) #Possible to store the elements, i.e. remove .loc_name
         return load_buses
         
 
@@ -452,3 +436,51 @@ class PFactoryGrid(object):
     def run_sim_initial(self,time):
         """ Function for running the simulation initially up to a given time """
         print("See run_dynamic simulation")
+
+    def get_machines_inertia_list(self):
+        """
+        Function to get array of all machines inertias,'M', corresponding to
+        2HS/omega_0. 
+
+        """
+        #generator types (ed up with H array) 
+        omega_0 = 50 
+        machine_list = self.app.GetCalcRelevantObjects("*.ElmSym") 
+        machine_type = []
+        for machine in machine_list:
+            machine_type.append(machine.typ_id)
+        inertias = [] 
+        for machine in machine_type:
+            inertias.append(2*machine.sgn*machine.h/omega_0)
+        return inertias
+
+    def get_machine_list(self): 
+        """
+        Function to get machine list
+        """ 
+        # np.array containing the bus number and id of every generator in the network
+        # PF: Attribute desc (description) contains bus nr and id
+        bus_nr = [] 
+        machine_id = [] 
+        machines = self.app.GetCalcRelevantObjects("*.ElmSym") 
+        for machine in machines:
+            bus_nr.append(int(machine.desc[0][0:5]))
+            machine_id.append(int(machine.desc[0][6]))
+        machine_list = [bus_nr,machine_id]
+        return machine_list
+    
+    def get_op_loads(self):
+        """
+        get np.array of operating loads
+        """ 
+
+        op_load = np.loadtxt("op_load.txt",unpack=True)
+        return op_load
+
+    def get_op_gen(self):
+        """
+        get np.array of operating generators
+        """ 
+
+        op_gen  = np.loadtxt("op_gen.txt",unpack=True)
+        return op_gen
