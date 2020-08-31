@@ -469,18 +469,3 @@ class PFactoryGrid(object):
         machine_list = [bus_nr,machine_id]
         return machine_list
     
-    def get_op_loads(self):
-        """
-        get np.array of operating loads
-        """ 
-
-        op_load = np.loadtxt("op_load.txt",unpack=True)
-        return op_load
-
-    def get_op_gen(self):
-        """
-        get np.array of operating generators
-        """ 
-
-        op_gen  = np.loadtxt("op_gen.txt",unpack=True)
-        return op_gen
