@@ -118,6 +118,48 @@ class PFactoryGrid(object):
 
         return time, values
 
+    def get_total_load(self):   
+        """ Get total active load on all buses """
+        # Collect all load elements
+        loads = self.app.GetCalcRelevantObjects("*.ElmLod")
+        # Sum up load values
+        load_tot = []
+        load_val = 0 
+        bus = loads[0].bus1
+        # Iterate through all loads
+        for load in loads:
+            # Find out to which bus the load is connected 
+            if load.bus1 != bus: 
+                bus = load.bus1
+                load_tot.append(load_val)
+                load_val = load.plini 
+            else: 
+                load_val = load_val + load.plini
+        # Add the last value to the array
+        load_tot.append(load_val)
+        return np.array(load_tot) 
+
+    def get_total_gen(self):   
+        """ Get total active power generation on all buses """
+        # Get all generator elements
+        gens = self.app.GetCalcRelevantObjects("*.ElmSym") # ElmSym data object
+        # Sum up generation values
+        gen_tot = []
+        gen_val = 0 
+        bus = gens[0].bus1
+        # Iterate through all machines
+        for gen in gens:
+            # Find out to which bus the machine is connected 
+            if gen.bus1 != bus: 
+                bus = gen.bus1
+                gen_tot.append(gen_val)
+                gen_val = gen.pgini
+            else: 
+                gen_val = gen_val + gen.pgini
+        # Add the last value to the array
+        gen_tot.append(gen_val)
+        return np.array(gen_tot) 
+
     def set_load_powers(self, p_load, q_load):
         """Method for setting all loads powers.
 
@@ -152,25 +194,7 @@ class PFactoryGrid(object):
                 gen.pgini = p_gen[gen.loc_name]
                 gen.qgini = q_gen[gen.loc_name]
 
-    def get_total_load(self):   
-        """ Get total active load of all buses """
-        # Collect all load elements
-        loads = self.app.GetCalcRelevantObjects("*.ElmLod")
-        # Sum up load values
-        load_tot = 0
-        for load in loads:
-            load_tot = load_tot + load.plini
-        return load_tot
-
-    def get_total_gen(self):   
-        """ Get total active power generation of all buses """
-        # Get all generator elements
-        gens = self.app.GetCalcRelevantObjects("*.ElmSym") # ElmSym data object
-        # Sum up generation values
-        gen_tot = 0
-        for gen in gens:
-            gen_tot = gen_tot + gen.pgini
-        return gen_tot
+    
 
     def get_machine_gen(self, elm_name): 
         """ Get active power generation from a specific machine 
@@ -178,11 +202,12 @@ class PFactoryGrid(object):
         Args:
             elm_name: Name of elements to get active power.
         """
-        machine = self.app.GetCalcRelevantObjects(elm_name) # return list with one element
+        # Get machine element (return list with one element)
+        machine = self.app.GetCalcRelevantObjects(elm_name) 
         gen = machine[0].pgini
-        return gen
+        return np.array(gen) 
 
-    def change_bus_load(self,bus_number,load):
+    def change_bus_load(self,bus_number,new_load):
         """ Change load at a specific load 
 
         Args: 
@@ -191,13 +216,20 @@ class PFactoryGrid(object):
         """
         bus_name = "bus"+str(bus_number)
         cubs = self.app.GetCalcRelevantObjects("*.StaCubic")
+        # Iterate through all cubs 
         for cub in cubs: 
-            if cub.cterm.loc_name == bus_name: #check if cub is connected to the bus
+            # Check if cub is connected to the bus
+            if cub.cterm.loc_name == bus_name: 
                 elm_type = cub.obj_id.GetClassName()
-                if elm_type == "ElmLod": #check if a connected element is a load
+                # Check if a connected element is a load
+                if elm_type == "ElmLod": 
                     elm_name = cub.obj_id.loc_name+".ElmLod"
-                    self.change_spec_bus_load(elm_name, load)
 
+        # Get the load element by returning a list with one element            
+        load = self.app.GetCalcRelevantObjects(elm_name) 
+        load[0].plini = new_load
+
+        # Alternative with other input: 
         """" Alternative with these Args:
             elm_name: Name of elements to change load.
             new_load: value of active power which the load is chaning to
@@ -207,16 +239,31 @@ class PFactoryGrid(object):
             load[0].plini = new_load
         """ 
 
-    def change_machine_gen(self,machine,gen):
+    def change_machine_gen(self,machine,new_gen):
         """ Change active power generation at a specific machine 
 
         Args: 
             machine: name of the machine 
             gen: value of new generation in MW 
         """
-        elm_name = machine+".ElmSym"
-        generator = self.app.GetCalcRelevantObjects(elm_name) # return list with one element
+        # Get machine name 
+        machine = self.get_machine_name(machine.bus_number, machine.mid)
+        elm_name = machine.loc_name+".ElmSym"
+        # Get machine element (return list with one element)
+        generator = self.app.GetCalcRelevantObjects(elm_name) 
         generator[0].pgini = new_gen
+    
+    def get_machine_name(self,bus_nr,id): 
+        """ Get machine name in powerfactory based on id and bus number 
+            Return the machine object, to get the name, use attribute loc_name
+        """ 
+        machines = self.app.GetCalcRelevantObjects("*.ElmSym") 
+        for machine in machines:
+            # First digit in bus_nr is the denoting the area of the bus
+            if int(machine.desc[0][0:5]) == bus_nr:
+                if int(machine.desc[0][6]) == id: 
+                    elm_name = machine 
+        return elm_name
 
     def get_area_gen(self, area_num):
         """ Get total generation in a specific area 
@@ -224,10 +271,12 @@ class PFactoryGrid(object):
         Args:
             area_num: Name of area which is of interest (i.e. "Area1")
         """ 
-        gens = self.app.GetCalcRelevantObjects("*.ElmSym") # ElmSym data object
+        # Get all the ElmSym data objects
+        gens = self.app.GetCalcRelevantObjects("*.ElmSym") 
         gen_tot_area = 0
+        # Iterate through machine elements to add up generation (area name in powerfactory  MUST be just a number)
         for gen in gens:
-            if gen.cpArea.loc_name == area_num: 
+            if int(gen.cpArea.loc_name) == area_num: 
                 gen_tot_area = gen_tot_area + gen.pgini
         return gen_tot_area
 
@@ -237,10 +286,12 @@ class PFactoryGrid(object):
         Args:
             area_num: Name of area which is of interest (i.e. "Area1")
         """ 
-        loads = self.app.GetCalcRelevantObjects("*.ElmLod") # ElmSym data object
+        # Get all the ElmLod data objects
+        loads = self.app.GetCalcRelevantObjects("*.ElmLod") 
         load_tot_area = 0
+        # Iterate through machine elements to add up generation (area name in powerfactory  MUST be just a number)
         for load in loads:
-            if load.cpArea.loc_name == area_num: 
+            if int(load.cpArea.loc_name) == area_num: 
                 load_tot_area = load_tot_area + load.plini
         return load_tot_area
 
@@ -379,7 +430,8 @@ class PFactoryGrid(object):
         for cub in cubs: 
             elm_type = cub.obj_id.GetClassName()
             if elm_type == "ElmLod":
-                load_buses.append(cub.cterm.loc_name) #Possible to store the elements, i.e. remove .loc_name
+                # Stores the bus number the load is connected to (Possible to store the elements, i.e. remove .loc_name)
+                load_buses.append(cub.cterm.loc_name[3:8]) 
         return load_buses
         
 
@@ -394,36 +446,53 @@ class PFactoryGrid(object):
 
     def gen_out_of_service(self,machine):
         """ Function for setting generator out of service """
-        elm_name = machine+".ElmSym"
-        set_out_of_service(elm_name)
+        machine = self.get_machine_name(machine.bus_number, machine.mid)
+        elm_name = machine.loc_name+".ElmSym"
+        self.set_out_of_service(elm_name)
     
     def initiate_dynamic_sim(self,system,outputfile): 
         # run prepare_dynamic_sim
-        raise NotImplementedError
+        print("Initiate simulation.")
     
     def get_branch_flow(self,bus_from,bus_to):
         """ Function for getting the flow on a branch """  
+        # Find branch
+        line = self.find_branch(bus_from,bus_to)
+        if line.bus1 or line.bus2 == bus_name_to:
+            name = line.loc_name
+            value = line.GetAttribute("c:loading")
+            print("Loading of",name,"is", value, "%")
+        return value
+    
+    def find_branch(self, bus_from, bus_to): 
+        """ Find branch based on bus bars 
+        """
         bus_name_from = "bus"+str(bus_from)
         bus_name_to = "bus"+str(bus_to)
         cubs = self.app.GetCalcRelevantObjects("*.StaCubic")
+        # Search through the cubs to find the correct element 
         for cub in cubs: 
             if cub.cterm.loc_name == bus_name_from: #check if cub is connected to the bus
                 elm_type = cub.obj_id.GetClassName()
                 if elm_type == "ElmLne": #check if a connected element is a line
                     line = cub.obj_id
-                    if line.bus1 or line.bus2 == bus_name_to:
-                        name = line.loc_name
-                        value = line.GetAttribute("c:loading")
-                        print("Loading of",name,"is", value, "%")
-                        return(value)
-    
+        return line
+
     def fault_branch(self,bus_from,bus_to):
         """ Function for placing a fault on a branch """
-        raise NotImplementedError
+        # Find branch
+        line = self.find_branch(bus_from,bus_to)
+
+        # Create short circuit event 
+        self.create_short_circuit(line, 1, "SC1")
 
     def trip_branch(self, bus_from, bus_to):
         """ Function for tripping a branch """ 
-        raise NotImplementedError
+        # Find branch
+        line = self.find_branch(bus_from,bus_to)
+
+        # Create triupping event 
+        self.create_switch_event(line, 1, "trip1")
 
     def get_channel_data(self,outputfile):
         """ Function for getting the channel data """
@@ -431,11 +500,15 @@ class PFactoryGrid(object):
 
     def run_sim(self, time):
         """ Function for running the simulation up to a given time """
-        print("See run_dynamic simulation")
+        monitor = {"Synchronous Machine(32).ElmSym": ["n:fehz:bus1"], "Synchronous Machine(18).ElmSym": ["n:fehz:bus1"]}
+        self.prepare_dynamic_sim(variables=monitor,end_time=time)
+        self.run_dynamic_sim()
     
     def run_sim_initial(self,time):
         """ Function for running the simulation initially up to a given time """
-        print("See run_dynamic simulation")
+        monitor = {"Synchronous Machine(32).ElmSym": ["n:fehz:bus1"], "Synchronous Machine(18).ElmSym": ["n:fehz:bus1"]}
+        self.prepare_dynamic_sim(variables=monitor,start_tine = 0, end_time=time)
+        self.run_dynamic_sim()
 
     def get_machines_inertia_list(self):
         """
@@ -447,6 +520,7 @@ class PFactoryGrid(object):
         omega_0 = 50 
         machine_list = self.app.GetCalcRelevantObjects("*.ElmSym") 
         machine_type = []
+        # Identify the machine type (GENSAL - salient pole, or GENROU - round pole) 
         for machine in machine_list:
             machine_type.append(machine.typ_id)
         inertias = [] 
@@ -459,13 +533,15 @@ class PFactoryGrid(object):
         Function to get machine list
         """ 
         # np.array containing the bus number and id of every generator in the network
-        # PF: Attribute desc (description) contains bus nr and id
+        # PF: Attribute desc (description) contains bus nr and id, e.g. 10005 0
         bus_nr = []
         machine_id = []
         machines = self.app.GetCalcRelevantObjects("*.ElmSym") 
+        # Copy bus_nr and id into array 
         for machine in machines:
             bus_nr.append(int(machine.desc[0][0:5]))
             machine_id.append(int(machine.desc[0][6]))
+        # Convert to numpy array 
         bus_number = np.array(bus_nr)
         machine_ID = np.array(machine_id)
 
