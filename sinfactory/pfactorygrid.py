@@ -28,6 +28,15 @@ class PFactoryGrid(object):
         study_case_file = study_case_name + '.IntCase'
         self.study_case = study_case_folder.GetContents(study_case_file)[0]
         self.study_case.Activate()
+    
+    def get_ratings(self): 
+        
+        # Get all generator elements
+        machines = self.app.GetCalcRelevantObjects("*.ElmSym") # ElmSym data object
+        ratings = []
+        for machine in machines: 
+            ratings.append(machine.P_max) 
+        return ratings 
 
     def prepare_dynamic_sim(self, variables, sim_type='rms', start_time=0.0,
                             step_size=0.01, end_time=10.0):
@@ -58,11 +67,57 @@ class PFactoryGrid(object):
             # Select variables to monitor for each element
             for element in elements:
                 self.res.AddVars(element, *var_names)
-
+            print(elements)
+        print(self.res)
         # Retrieve initial conditions and time domain simulation object
         self.inc = self.app.GetFromStudyCase('ComInc')
         self.sim = self.app.GetFromStudyCase('ComSim')
 
+        # Set simulation type
+        self.inc.iopt_sim = sim_type
+
+        # Set time options
+        self.inc.tstart = start_time
+        self.inc.dtgrid = step_size
+        self.sim.tstop = end_time
+
+        # Calculate initial conditions
+        self.inc.Execute()
+
+    def prepare_dynamic_sim2(self, sim_type='rms', start_time=0.0,
+                            step_size=0.01, end_time=10.0):
+        """Method for calculating dynamic simulation initial conditions.
+
+        Method that sets relevant parameters for calculating the initial
+        conditions for the dynamic simulation and calculates them. It also
+        determines which variables to monitor
+
+        Args:
+            variables (Dict): A dictionary containing the keys are the
+                elements to be monitored and the data is a list of variables to
+                monitor.
+            sim_type (str): The simulation type it can be either rms for
+                rms simulation and ins for EMT the default is rms.
+            start_time (float): The starting time for the simulation the
+                default is 0.0
+            step_size (float): The time step used for the simulation. The
+                default is 0.01
+            end_time: The end time for the simulation. The default is 10.0
+        """
+        # Get all generator elements
+        elements = self.app.GetCalcRelevantObjects("*.ElmSym") # ElmSym data object
+        var_names = ["n:fehz:bus1","n:u1:bus1","m:u1:bus1","m:P:bus1","m:Q:bus1"] 
+        # Get result file.
+        self.res = self.app.GetFromStudyCase('*.ElmRes')
+       
+        # Select variables to monitor for each element
+        for element in elements:
+            self.res.AddVars(element, *var_names)
+        # Retrieve initial conditions and time domain simulation object
+        self.inc = self.app.GetFromStudyCase('ComInc')
+        self.sim = self.app.GetFromStudyCase('ComSim')
+        print("TEST")
+        print(self.res.GetObj(2))
         # Set simulation type
         self.inc.iopt_sim = sim_type
 
@@ -95,9 +150,12 @@ class PFactoryGrid(object):
         """
         # Get network element of interest.
         element = self.app.GetCalcRelevantObjects(elm_name)[0]
+        print(element)
         # Load results from file.
         self.app.ResLoadData(self.res)
-
+        print(self.res.Load())
+        print("TEST")
+        print(self.res.GetObj(2))
         # Find column that holds results of interest
         col_idx = self.app.ResGetIndex(self.res, element, var_name)
 
@@ -196,15 +254,15 @@ class PFactoryGrid(object):
 
     
 
-    def get_machine_gen(self, elm_name): 
+    def get_machine_gen(self, m): 
         """ Get active power generation from a specific machine 
 
         Args:
             elm_name: Name of elements to get active power.
         """
         # Get machine element (return list with one element)
-        machine = self.app.GetCalcRelevantObjects(elm_name) 
-        gen = machine[0].pgini
+        machine = self.app.GetCalcRelevantObjects(m+".ElmSym")
+        gen = machine.pgini
         return np.array(gen) 
 
     def change_bus_load(self,bus_number,new_load):
@@ -246,24 +304,26 @@ class PFactoryGrid(object):
             machine: name of the machine 
             gen: value of new generation in MW 
         """
-        # Get machine name 
-        machine = self.get_machine_name(machine.bus_number, machine.mid)
-        elm_name = machine.loc_name+".ElmSym"
         # Get machine element (return list with one element)
-        generator = self.app.GetCalcRelevantObjects(elm_name) 
+        generator = self.app.GetCalcRelevantObjects(machine+".ElmSym") 
         generator[0].pgini = new_gen
     
-    def get_machine_name(self,bus_nr,id): 
-        """ Get machine name in powerfactory based on id and bus number 
-            Return the machine object, to get the name, use attribute loc_name
+    def get_machines(self): 
+        """ Return list of all machine names
         """ 
         machines = self.app.GetCalcRelevantObjects("*.ElmSym") 
-        for machine in machines:
-            # First digit in bus_nr is the denoting the area of the bus
-            if int(machine.desc[0][0:5]) == bus_nr:
-                if int(machine.desc[0][6]) == id: 
-                    elm_name = machine 
-        return elm_name
+        machine_name_list = []
+        for m in machines: 
+            machine_name_list.append(m.loc_name)
+        return machine_name_list
+
+    def check_if_in_service(self, machine): 
+        obj = self.app.GetCalcRelevantObjects(machine+".ElmSym")[0]
+        return not obj.outserv
+    
+    def get_area_gen_in(self,machine): 
+        obj = self.app.GetCalcRelevantObjects(machine+".ElmSym")[0]
+        return obj.cpArea
 
     def get_area_gen(self, area_num):
         """ Get total generation in a specific area 
@@ -302,9 +362,8 @@ class PFactoryGrid(object):
             elm_name: Name of elements to take out of service.
         """
         # Collect all elements that match elm_name
-        elms = self.app.GetCalcRelevantObjects(elm_name)
-        for elm in elms:
-            elm.outserv = True
+        elm = self.app.GetCalcRelevantObjects(elm_name)[0]
+        elm.outserv = True
 
     def set_in_service(self, elm_name):
         """Take an element back in service.
@@ -442,17 +501,13 @@ class PFactoryGrid(object):
 
     def power_calc_converged(self):
         """ Function for checking whether power flow calc converged """
-        print("Convergence check")
+        return True 
 
     def gen_out_of_service(self,machine):
         """ Function for setting generator out of service """
-        machine = self.get_machine_name(machine.bus_number, machine.mid)
-        elm_name = machine.loc_name+".ElmSym"
+        elm_name = machine+".ElmSym"
+        #elm = self.app.GetCalcRelevantObjects(elm_name)
         self.set_out_of_service(elm_name)
-    
-    def initiate_dynamic_sim(self,system,outputfile): 
-        # run prepare_dynamic_sim
-        print("Initiate simulation.")
     
     def get_branch_flow(self,bus_from,bus_to):
         """ Function for getting the flow on a branch """  
@@ -494,14 +549,18 @@ class PFactoryGrid(object):
         # Create triupping event 
         self.create_switch_event(line, 1, "trip1")
 
-    def get_channel_data(self,outputfile):
+    def get_channel_data(self):
         """ Function for getting the channel data """
         raise NotImplementedError
 
+    def initiate_dynamic_sim(self,system): 
+        # run prepare_dynamic_sim
+        print("Initiate simulation.")
+        monitor = {"Synchronous Machine(32).ElmSym": ["n:fehz:bus1"], "Synchronous Machine(18).ElmSym": ["n:fehz:bus1"]}
+        self.prepare_dynamic_sim(variables=monitor,end_time=10.0)
+        
     def run_sim(self, time):
         """ Function for running the simulation up to a given time """
-        monitor = {"Synchronous Machine(32).ElmSym": ["n:fehz:bus1"], "Synchronous Machine(18).ElmSym": ["n:fehz:bus1"]}
-        self.prepare_dynamic_sim(variables=monitor,end_time=time)
         self.run_dynamic_sim()
     
     def run_sim_initial(self,time):
@@ -520,13 +579,16 @@ class PFactoryGrid(object):
         omega_0 = 50 
         machine_list = self.app.GetCalcRelevantObjects("*.ElmSym") 
         machine_type = []
+        machine_name = []
         # Identify the machine type (GENSAL - salient pole, or GENROU - round pole) 
         for machine in machine_list:
             machine_type.append(machine.typ_id)
+            machine_name.append(machine.loc_name)
         inertias = [] 
         for machine in machine_type:
             inertias.append(2*machine.sgn*machine.h/omega_0)
-        return inertias
+        inertia_list = np.column_stack([machine_name,inertias])
+        return inertia_list
 
     def get_machine_list(self): 
         """
@@ -548,3 +610,8 @@ class PFactoryGrid(object):
         machine_list = np.row_stack([bus_number,machine_ID])
         return machine_list
     
+    def get_inertia(self,machine): 
+        machine_obj = self.app.GetCalcRelevantObjects(machine+".ElmSym") 
+        machine_type = machine_obj.typ_id
+        inertia = 2*machine_type.sgn*machine_type.h/omega_0
+        return inertia
