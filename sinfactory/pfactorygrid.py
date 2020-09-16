@@ -1,5 +1,6 @@
 """Module for interfacing with power factory."""
 
+import math 
 import os
 import numpy as np
 import powerfactory as pf
@@ -38,53 +39,9 @@ class PFactoryGrid(object):
             ratings.append(machine.P_max) 
         return ratings 
 
-    def prepare_dynamic_sim(self, variables, sim_type='rms', start_time=0.0,
-                            step_size=0.01, end_time=10.0):
-        """Method for calculating dynamic simulation initial conditions.
 
-        Method that sets relevant parameters for calculating the initial
-        conditions for the dynamic simulation and calculates them. It also
-        determines which variables to monitor
 
-        Args:
-            variables (Dict): A dictionary containing the keys are the
-                elements to be monitored and the data is a list of variables to
-                monitor.
-            sim_type (str): The simulation type it can be either rms for
-                rms simulation and ins for EMT the default is rms.
-            start_time (float): The starting time for the simulation the
-                default is 0.0
-            step_size (float): The time step used for the simulation. The
-                default is 0.01
-            end_time: The end time for the simulation. The default is 10.0
-        """
-        # Get result file.
-        self.res = self.app.GetFromStudyCase('*.ElmRes')
-        # Select result variable to monitor.
-        for elm_name, var_names in variables.items():
-            # Get all elements that match elm_name
-            elements = self.app.GetCalcRelevantObjects(elm_name)
-            # Select variables to monitor for each element
-            for element in elements:
-                self.res.AddVars(element, *var_names)
-            print(elements)
-        print(self.res)
-        # Retrieve initial conditions and time domain simulation object
-        self.inc = self.app.GetFromStudyCase('ComInc')
-        self.sim = self.app.GetFromStudyCase('ComSim')
-
-        # Set simulation type
-        self.inc.iopt_sim = sim_type
-
-        # Set time options
-        self.inc.tstart = start_time
-        self.inc.dtgrid = step_size
-        self.sim.tstop = end_time
-
-        # Calculate initial conditions
-        self.inc.Execute()
-
-    def prepare_dynamic_sim2(self, sim_type='rms', start_time=0.0,
+    def prepare_dynamic_sim(self, sim_type='rms', start_time=0.0,
                             step_size=0.01, end_time=10.0):
         """Method for calculating dynamic simulation initial conditions.
 
@@ -106,7 +63,8 @@ class PFactoryGrid(object):
         """
         # Get all generator elements
         elements = self.app.GetCalcRelevantObjects("*.ElmSym") # ElmSym data object
-        var_names = ["n:fehz:bus1","n:u1:bus1","m:u1:bus1","m:P:bus1","m:Q:bus1"] 
+        var_names = ["n:fehz:bus1","n:u1:bus1","n:u1:bus1","m:P:bus1","n:Q:bus1", "m:ui:bus1", "m:ur:bus1"] 
+        
         # Get result file.
         self.res = self.app.GetFromStudyCase('*.ElmRes')
        
@@ -116,8 +74,7 @@ class PFactoryGrid(object):
         # Retrieve initial conditions and time domain simulation object
         self.inc = self.app.GetFromStudyCase('ComInc')
         self.sim = self.app.GetFromStudyCase('ComSim')
-        print("TEST")
-        print(self.res.GetObj(2))
+        #print(self.res.GetObj(2))
         # Set simulation type
         self.inc.iopt_sim = sim_type
 
@@ -153,14 +110,12 @@ class PFactoryGrid(object):
         print(element)
         # Load results from file.
         self.app.ResLoadData(self.res)
-        print(self.res.Load())
-        print("TEST")
-        print(self.res.GetObj(2))
+        #print(self.res.GetObj(2))
         # Find column that holds results of interest
         col_idx = self.app.ResGetIndex(self.res, element, var_name)
 
         if col_idx == -1:
-            raise ValueError("Could not find : " + elm_name)
+            raise ValueError("Could not find : ", elm_name)
 
         # Get time steps in the result file
         t_steps = self.app.ResGetValueCount(self.res, 0)
@@ -177,7 +132,10 @@ class PFactoryGrid(object):
         return time, values
 
     def get_total_load(self):   
-        """ Get total active load on all buses """
+        """ Get total active load on all buses
+        Return: 
+            vector of total load at each bus (length of vector is equal to bus numbers)
+         """
         # Collect all load elements
         loads = self.app.GetCalcRelevantObjects("*.ElmLod")
         # Sum up load values
@@ -376,6 +334,190 @@ class PFactoryGrid(object):
         for elm in elms:
             elm.outserv = False
 
+    def change_generator_inertia_constant(self, name, value):
+        """Change the inertia constant of a generator.
+
+        Args:
+            name: Name of the generator.
+            value: The inertia constant value.
+        """
+        elms = self.app.GetCalcRelevantObjects(name)
+        elms[0].h = value
+
+    def change_grid_min_short_circuit_power(self, name, value):
+        """Change the minimum short circuit power of an external grid.
+
+        Args:
+            name: Name of the external grid.
+            value: The minimum short circuit power value.
+        """
+        elms = self.app.GetCalcRelevantObjects(name)
+        elms[0].snssmin = value
+    
+    def get_load_busses(self):
+        """ 
+        Function for getting the bus names with loads as an array
+
+        """
+        load_buses = []
+        cubs = self.app.GetCalcRelevantObjects("*.StaCubic")
+        for cub in cubs: 
+            elm_type = cub.obj_id.GetClassName()
+            if elm_type == "ElmLod":
+                # Stores the bus number the load is connected to (Possible to store the elements, i.e. remove .loc_name)
+                load_buses.append(cub.cterm.loc_name[3:8]) 
+        return load_buses
+        
+
+    def power_flow_calc(self):
+        """ Function for running power flow """
+        LDF = self.app.GetFromStudyCase("ComLdf")
+        LDF.CalcParams()
+        print("Load flow success (0 is success):")
+        print(LDF.Execute()) 
+        print("Load flow balanced if True: ")
+        print(LDF.IsBalanced())
+        return LDF 
+
+    def power_calc_converged(self):
+        """ Function for checking whether power flow calc converged """
+        return True 
+
+    def gen_out_of_service(self,machine):
+        """ Function for setting generator out of service """
+        elm_name = machine+".ElmSym"
+        #elm = self.app.GetCalcRelevantObjects(elm_name)
+        self.set_out_of_service(elm_name)
+    
+    def get_branch_flow(self,bus_from,bus_to):
+        """ Function for getting the flow on a branch """  
+        # Find branch
+        line = self.find_branch(bus_from,bus_to)
+        if line.bus1 or line.bus2 == bus_name_to:
+            name = line.loc_name
+            value = line.GetAttribute("c:loading")
+            print("Loading of",name,"is", value, "%")
+        return value
+
+    def fault_branch(self,bus_from,bus_to):
+        """ Function for placing a fault on a branch """
+        # Find branch
+        line = self.find_branch(bus_from,bus_to)
+
+        # Create short circuit event 
+        self.create_short_circuit(line, 1, "SC1")
+
+    def trip_branch(self, bus_from, bus_to):
+        """ Function for tripping a branch 
+        on_off = 0/1 = off/on
+        """ 
+        # Find branch
+        line_name = self.find_branch(bus_from,bus_to)
+        
+        switches = self.app.GetCalcRelevantObjects("*.StaSwitch")
+        line = self.app.GetCalcRelevantObjects(line_name+".ElmLne")[0]
+        cub_1 = line.bus1
+        cub_2 = line.bus2
+        for switch in switches: 
+            if switch.fold_id == cub_1: 
+                 switch_1 = switch
+            if switch.fold_id == cub_2: 
+                 switch_2 = switch 
+        # Turn on/off switches
+        switch_1.on_off = on_off
+        switch_2.on_off = on_off
+
+    def find_branch(self, bus_from, bus_to): 
+        """ Find branch based on bus bars 
+        """
+        bus_name_from = "bus"+str(bus_from)
+        bus_name_to = "bus"+str(bus_to)
+        cubs = self.app.GetCalcRelevantObjects("*.StaCubic")
+        # Search through the cubs to find the correct element 
+        for cub in cubs: 
+            if cub.cterm.loc_name == bus_name_from: #check if cub is connected to the bus
+                elm_type = cub.obj_id.GetClassName()
+                if elm_type == "ElmLne": #check if a connected element is a line
+                    line = cub.obj_id
+        return line
+        
+    def run_sim(self, time):
+        """ Function for running the simulation up to a given time """
+        self.run_dynamic_sim()
+    
+    def run_sim_initial(self,time):
+        """ Function for running the simulation initially up to a given time """
+        self.prepare_dynamic_sim(start_time = 0, end_time=time)
+        self.run_dynamic_sim()
+
+    def is_ref(self, machine): 
+        """ check if machine is the reference machine """
+        machine = self.app.GetCalcRelevantObjects(machine+".ElmSym")[0]
+        return machine.ip_ctrl
+
+    def get_voltage_angles(self): 
+        """ Get voltage angles
+        """
+        # Get machine element (return list with one element)
+        machines = self.get_machines()
+        var = ["m:ui:bus1", "m.ur:bus1"]
+        angle = []
+        for machine in machines: 
+            machine_name = machine+".ElmSym"
+            ang = self.get_dynamic_results(machine_name,var[1]) / self.get_dynamic_results(machine_name,var[0])
+            angle.append(math.atan(ang))
+
+    def get_machines_inertia_list(self):
+        """
+        Function to get array of all machines inertias,'M', corresponding to
+        2HS/omega_0. 
+
+        """
+        #generator types (ed up with H array) 
+        omega_0 = 50 
+        machine_list = self.app.GetCalcRelevantObjects("*.ElmSym") 
+        machine_type = []
+        machine_name = []
+        # Identify the machine type (GENSAL - salient pole, or GENROU - round pole) 
+        for machine in machine_list:
+            machine_type.append(machine.typ_id)
+            machine_name.append(machine.loc_name)
+        inertias = [] 
+        for machine in machine_type:
+            inertias.append(2*machine.sgn*machine.h/omega_0)
+        inertia_list = np.column_stack([machine_name,inertias])
+        return inertia_list
+
+    def get_machine_list(self): 
+        """
+        Function to get machine list
+        """ 
+        # np.array containing the bus number and id of every generator in the network
+        # PF: Attribute desc (description) contains bus nr and id, e.g. 10005 0
+        bus_nr = []
+        machine_id = []
+        machines = self.app.GetCalcRelevantObjects("*.ElmSym") 
+        # Copy bus_nr and id into array 
+        for machine in machines:
+            bus_nr.append(int(machine.desc[0][0:5]))
+            machine_id.append(int(machine.desc[0][6]))
+        # Convert to numpy array 
+        bus_number = np.array(bus_nr)
+        machine_ID = np.array(machine_id)
+
+        machine_list = np.row_stack([bus_number,machine_ID])
+        return machine_list
+    
+    def get_inertia(self,machine): 
+        machine_obj = self.app.GetCalcRelevantObjects(machine+".ElmSym") 
+        machine_type = machine_obj.typ_id
+        omega_0 = 50 
+        inertia = 2*machine_type.sgn*machine_type.h/omega_0
+        return inertia
+
+    
+    # under: bruker ikke i ml code (rapid)
+
     def create_short_circuit(self, target_name, time, name):
         """Create a three phase short circuit.
 
@@ -458,160 +600,3 @@ class PFactoryGrid(object):
             sw[0].Delete()
         if sww:
             sww[0].Delete()
-
-    def change_generator_inertia_constant(self, name, value):
-        """Change the inertia constant of a generator.
-
-        Args:
-            name: Name of the generator.
-            value: The inertia constant value.
-        """
-        elms = self.app.GetCalcRelevantObjects(name)
-        elms[0].h = value
-
-    def change_grid_min_short_circuit_power(self, name, value):
-        """Change the minimum short circuit power of an external grid.
-
-        Args:
-            name: Name of the external grid.
-            value: The minimum short circuit power value.
-        """
-        elms = self.app.GetCalcRelevantObjects(name)
-        elms[0].snssmin = value
-    
-    def get_load_busses(self):
-        """ 
-        Function for getting the bus names with loads as an array
-
-        """
-        load_buses = []
-        cubs = self.app.GetCalcRelevantObjects("*.StaCubic")
-        for cub in cubs: 
-            elm_type = cub.obj_id.GetClassName()
-            if elm_type == "ElmLod":
-                # Stores the bus number the load is connected to (Possible to store the elements, i.e. remove .loc_name)
-                load_buses.append(cub.cterm.loc_name[3:8]) 
-        return load_buses
-        
-
-    def power_flow_calc(self):
-        """ Function for running power flow """
-        LDF = self.app.GetFromStudyCase("ComLdf")
-        LDF.Execute() 
-
-    def power_calc_converged(self):
-        """ Function for checking whether power flow calc converged """
-        return True 
-
-    def gen_out_of_service(self,machine):
-        """ Function for setting generator out of service """
-        elm_name = machine+".ElmSym"
-        #elm = self.app.GetCalcRelevantObjects(elm_name)
-        self.set_out_of_service(elm_name)
-    
-    def get_branch_flow(self,bus_from,bus_to):
-        """ Function for getting the flow on a branch """  
-        # Find branch
-        line = self.find_branch(bus_from,bus_to)
-        if line.bus1 or line.bus2 == bus_name_to:
-            name = line.loc_name
-            value = line.GetAttribute("c:loading")
-            print("Loading of",name,"is", value, "%")
-        return value
-    
-    def find_branch(self, bus_from, bus_to): 
-        """ Find branch based on bus bars 
-        """
-        bus_name_from = "bus"+str(bus_from)
-        bus_name_to = "bus"+str(bus_to)
-        cubs = self.app.GetCalcRelevantObjects("*.StaCubic")
-        # Search through the cubs to find the correct element 
-        for cub in cubs: 
-            if cub.cterm.loc_name == bus_name_from: #check if cub is connected to the bus
-                elm_type = cub.obj_id.GetClassName()
-                if elm_type == "ElmLne": #check if a connected element is a line
-                    line = cub.obj_id
-        return line
-
-    def fault_branch(self,bus_from,bus_to):
-        """ Function for placing a fault on a branch """
-        # Find branch
-        line = self.find_branch(bus_from,bus_to)
-
-        # Create short circuit event 
-        self.create_short_circuit(line, 1, "SC1")
-
-    def trip_branch(self, bus_from, bus_to):
-        """ Function for tripping a branch """ 
-        # Find branch
-        line = self.find_branch(bus_from,bus_to)
-
-        # Create triupping event 
-        self.create_switch_event(line, 1, "trip1")
-
-    def get_channel_data(self):
-        """ Function for getting the channel data """
-        raise NotImplementedError
-
-    def initiate_dynamic_sim(self,system): 
-        # run prepare_dynamic_sim
-        print("Initiate simulation.")
-        monitor = {"Synchronous Machine(32).ElmSym": ["n:fehz:bus1"], "Synchronous Machine(18).ElmSym": ["n:fehz:bus1"]}
-        self.prepare_dynamic_sim(variables=monitor,end_time=10.0)
-        
-    def run_sim(self, time):
-        """ Function for running the simulation up to a given time """
-        self.run_dynamic_sim()
-    
-    def run_sim_initial(self,time):
-        """ Function for running the simulation initially up to a given time """
-        monitor = {"Synchronous Machine(32).ElmSym": ["n:fehz:bus1"], "Synchronous Machine(18).ElmSym": ["n:fehz:bus1"]}
-        self.prepare_dynamic_sim(variables=monitor,start_tine = 0, end_time=time)
-        self.run_dynamic_sim()
-
-    def get_machines_inertia_list(self):
-        """
-        Function to get array of all machines inertias,'M', corresponding to
-        2HS/omega_0. 
-
-        """
-        #generator types (ed up with H array) 
-        omega_0 = 50 
-        machine_list = self.app.GetCalcRelevantObjects("*.ElmSym") 
-        machine_type = []
-        machine_name = []
-        # Identify the machine type (GENSAL - salient pole, or GENROU - round pole) 
-        for machine in machine_list:
-            machine_type.append(machine.typ_id)
-            machine_name.append(machine.loc_name)
-        inertias = [] 
-        for machine in machine_type:
-            inertias.append(2*machine.sgn*machine.h/omega_0)
-        inertia_list = np.column_stack([machine_name,inertias])
-        return inertia_list
-
-    def get_machine_list(self): 
-        """
-        Function to get machine list
-        """ 
-        # np.array containing the bus number and id of every generator in the network
-        # PF: Attribute desc (description) contains bus nr and id, e.g. 10005 0
-        bus_nr = []
-        machine_id = []
-        machines = self.app.GetCalcRelevantObjects("*.ElmSym") 
-        # Copy bus_nr and id into array 
-        for machine in machines:
-            bus_nr.append(int(machine.desc[0][0:5]))
-            machine_id.append(int(machine.desc[0][6]))
-        # Convert to numpy array 
-        bus_number = np.array(bus_nr)
-        machine_ID = np.array(machine_id)
-
-        machine_list = np.row_stack([bus_number,machine_ID])
-        return machine_list
-    
-    def get_inertia(self,machine): 
-        machine_obj = self.app.GetCalcRelevantObjects(machine+".ElmSym") 
-        machine_type = machine_obj.typ_id
-        inertia = 2*machine_type.sgn*machine_type.h/omega_0
-        return inertia

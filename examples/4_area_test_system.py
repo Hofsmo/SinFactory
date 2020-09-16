@@ -3,35 +3,30 @@ sys.path.append(os.path.abspath(os.path.join('..', 'sinfactory')))
 #print("System path:") 
 #print(sys.path)
 from sinfactory.pfactorygrid import PFactoryGrid as PFactoryGrid
+import matplotlib.pyplot as plt
 
 project_name = "RaPid"
 study_case_name = "No_events" # "Case to compare with PSSE (Scenario 3)"
 test_obj = PFactoryGrid(project_name=project_name,study_case_name=study_case_name)
 print("Total generation: ",test_obj.get_total_gen()," MW")
 print("Total load: ",test_obj.get_total_load()," MW")
-plot = "frequency"
-"""
-if plot == "active power": 
-    monitor = {"Synchronous Machine(32).ElmSym": ["m:P:bus1"]}
-elif plot == "frequency":
-    monitor = {"Synchronous Machine(32).ElmSym": ["n:fehz:bus1"], "Synchronous Machine(18).ElmSym": ["n:fehz:bus1"]}
-elif plot == "voltage":
-    monitor = {"Synchronous Machine(32).ElmSym": ["n:u1:bus1"], "Synchronous Machine(18).ElmSym": ["m:u1:bus1"]}
+plot = "active power"
 
-test_obj.prepare_dynamic_sim(variables=monitor,end_time=20.0)"""
-test_obj.prepare_dynamic_sim2(end_time=3.0)
+test_obj.prepare_dynamic_sim(start_time=0.0, end_time=3.0)
 
 sim_bool = test_obj.run_dynamic_sim()
 print("Simulation success (false indicate success):")
 print(sim_bool)
 print(test_obj.get_machine_list())
 
-machine_list = test_obj.get_machine_list()
-print(machine_list.size)
-print(machine_list.T)
+#test_obj.switch_control("Line10",1)
 
-print(test_obj.get_machines_inertia_list())
-import matplotlib.pyplot as plt
+#machine_list = test_obj.get_machine_list()
+#print(machine_list.size)
+#print(machine_list.T)
+
+#print(test_obj.get_machines_inertia_list())
+
 if plot == "active power": 
     _, f1 = test_obj.get_dynamic_results("Synchronous Machine(32).ElmSym", "m:P:bus1")
     plt.plot(_,f1)
@@ -72,3 +67,15 @@ print(load_buses)
 machine_list = test_obj.get_machine_list()
 print(machine_list.size)
 print(machine_list.T)
+
+# Continue simulation 
+test_obj.prepare_dynamic_sim(start_time=3.0, end_time=5.0)
+
+sim_bool = test_obj.run_dynamic_sim()
+print("Simulation success (false indicate success):")
+print(sim_bool)
+print(test_obj.get_machine_list())
+
+_, f1 = test_obj.get_dynamic_results("Synchronous Machine(2).ElmSym", "m:P:bus1")
+plt.plot(_,f1)
+plt.show()
