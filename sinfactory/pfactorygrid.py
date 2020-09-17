@@ -63,14 +63,15 @@ class PFactoryGrid(object):
         """
         # Get all generator elements
         elements = self.app.GetCalcRelevantObjects("*.ElmSym") # ElmSym data object
-        var_names = ["n:fehz:bus1","n:u1:bus1","n:u1:bus1","m:P:bus1","n:Q:bus1", "m:ui:bus1", "m:ur:bus1"] 
+        var_names = ["n:fehz:bus1","n:u1:bus1","n:u1:bus1","m:P:bus1","n:Q:bus1",\
+            "m:ui:bus1", "m:ur:bus1"] 
         
         # Get result file.
         self.res = self.app.GetFromStudyCase('*.ElmRes')
-       
         # Select variables to monitor for each element
         for element in elements:
-            self.res.AddVars(element, *var_names)
+            for var in var_names: 
+                self.res.AddVariable(element, var)
         # Retrieve initial conditions and time domain simulation object
         self.inc = self.app.GetFromStudyCase('ComInc')
         self.sim = self.app.GetFromStudyCase('ComSim')
@@ -107,10 +108,10 @@ class PFactoryGrid(object):
         """
         # Get network element of interest.
         element = self.app.GetCalcRelevantObjects(elm_name)[0]
-        print(element)
-        # Load results from file.
-        self.app.ResLoadData(self.res)
-        #print(self.res.GetObj(2))
+
+        # Load results from file
+        self.res.Load() 
+
         # Find column that holds results of interest
         col_idx = self.app.ResGetIndex(self.res, element, var_name)
 
@@ -219,7 +220,7 @@ class PFactoryGrid(object):
             elm_name: Name of elements to get active power.
         """
         # Get machine element (return list with one element)
-        machine = self.app.GetCalcRelevantObjects(m+".ElmSym")
+        machine = self.app.GetCalcRelevantObjects(m+".ElmSym")[0]
         gen = machine.pgini
         return np.array(gen) 
 
@@ -274,14 +275,14 @@ class PFactoryGrid(object):
         for m in machines: 
             machine_name_list.append(m.loc_name)
         return machine_name_list
-
+    
     def check_if_in_service(self, machine): 
         obj = self.app.GetCalcRelevantObjects(machine+".ElmSym")[0]
         return not obj.outserv
     
     def get_area_gen_in(self,machine): 
         obj = self.app.GetCalcRelevantObjects(machine+".ElmSym")[0]
-        return obj.cpArea
+        return int(obj.cpArea.loc_name)
 
     def get_area_gen(self, area_num):
         """ Get total generation in a specific area 
@@ -319,8 +320,7 @@ class PFactoryGrid(object):
         Args:
             elm_name: Name of elements to take out of service.
         """
-        # Collect all elements that match elm_name
-        elm = self.app.GetCalcRelevantObjects(elm_name)[0]
+        elm = self.app.GetCalcRelevantObjects(elm_name+".ElmSym")[0]
         elm.outserv = True
 
     def set_in_service(self, elm_name):
@@ -329,10 +329,8 @@ class PFactoryGrid(object):
         Args:
             elm_name: Name of elements to take out of service.
         """
-        # Collect all elements that match elm_name
-        elms = self.app.GetCalcRelevantObjects(elm_name)
-        for elm in elms:
-            elm.outserv = False
+        elm = self.app.GetCalcRelevantObjects(elm_name+".ElmSym")[0]
+        elm.outserv = False
 
     def change_generator_inertia_constant(self, name, value):
         """Change the inertia constant of a generator.
@@ -373,21 +371,14 @@ class PFactoryGrid(object):
         """ Function for running power flow """
         LDF = self.app.GetFromStudyCase("ComLdf")
         LDF.CalcParams()
-        print("Load flow success (0 is success):")
-        print(LDF.Execute()) 
-        print("Load flow balanced if True: ")
-        print(LDF.IsBalanced())
+        LDF.Execute() 
         return LDF 
 
     def power_calc_converged(self):
         """ Function for checking whether power flow calc converged """
-        return True 
-
-    def gen_out_of_service(self,machine):
-        """ Function for setting generator out of service """
-        elm_name = machine+".ElmSym"
-        #elm = self.app.GetCalcRelevantObjects(elm_name)
-        self.set_out_of_service(elm_name)
+        LDF = self.app.GetFromStudyCase("ComLdf")
+        LDF.CalcParams()
+        return not LDF.Execute() # 0 is sucsess
     
     def get_branch_flow(self,bus_from,bus_to):
         """ Function for getting the flow on a branch """  
@@ -407,13 +398,19 @@ class PFactoryGrid(object):
         # Create short circuit event 
         self.create_short_circuit(line, 1, "SC1")
 
-    def trip_branch(self, bus_from, bus_to):
+    def get_line_list(self): 
+        """ Get list of line names""" 
+        
+        lines = self.app.GetCalcRelevantObjects("*.ElmLne")
+        line_names = [] 
+        for line in lines: 
+            line_names.append(line.loc_name)
+        return line_names 
+
+    def trip_branch(self, line_name,on_off):
         """ Function for tripping a branch 
         on_off = 0/1 = off/on
-        """ 
-        # Find branch
-        line_name = self.find_branch(bus_from,bus_to)
-        
+        """         
         switches = self.app.GetCalcRelevantObjects("*.StaSwitch")
         line = self.app.GetCalcRelevantObjects(line_name+".ElmLne")[0]
         cub_1 = line.bus1
@@ -455,18 +452,42 @@ class PFactoryGrid(object):
         machine = self.app.GetCalcRelevantObjects(machine+".ElmSym")[0]
         return machine.ip_ctrl
 
+    def get_freq(self): 
+        """ Get frequencies at all active machines 
+        """
+        # Get machine element (return list with one element)
+        machines = self.get_machines()
+        var = ["n:fehz:bus1"]
+        freq_all = []
+        for machine in machines: 
+            if self.check_if_in_service(machine):
+                time, freq = self.get_dynamic_results(machine+".ElmSym",var[0]) 
+                freq_all.append(freq)
+        return freq_all
+
     def get_voltage_angles(self): 
         """ Get voltage angles
         """
         # Get machine element (return list with one element)
         machines = self.get_machines()
-        var = ["m:ui:bus1", "m.ur:bus1"]
+        var = ["m:ui:bus1", "m:ur:bus1"]
         angle = []
         for machine in machines: 
-            machine_name = machine+".ElmSym"
-            ang = self.get_dynamic_results(machine_name,var[1]) / self.get_dynamic_results(machine_name,var[0])
-            angle.append(math.atan(ang))
+            if self.check_if_in_service(machine):
+                time, u_r = self.get_dynamic_results(machine+".ElmSym",var[1]) 
+                time, u_i = self.get_dynamic_results(machine+".ElmSym",var[0])
+                ang = u_r[len(time)-1] / u_i[len(time)-1]
+                angle.append(math.atan(ang))
+        return angle
 
+    def get_time(self): 
+        machines = self.get_machines()
+        var = ["m:ui:bus1", "m:ur:bus1"]
+        for machine in machines: 
+            if self.check_if_in_service(machine):
+                time, u_r = self.get_dynamic_results(machine+".ElmSym",var[1]) 
+        return time 
+                
     def get_machines_inertia_list(self):
         """
         Function to get array of all machines inertias,'M', corresponding to
@@ -509,7 +530,7 @@ class PFactoryGrid(object):
         return machine_list
     
     def get_inertia(self,machine): 
-        machine_obj = self.app.GetCalcRelevantObjects(machine+".ElmSym") 
+        machine_obj = self.app.GetCalcRelevantObjects(machine+".ElmSym")[0]
         machine_type = machine_obj.typ_id
         omega_0 = 50 
         inertia = 2*machine_type.sgn*machine_type.h/omega_0

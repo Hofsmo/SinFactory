@@ -12,6 +12,10 @@ print("Total generation: ",test_obj.get_total_gen()," MW")
 print("Total load: ",test_obj.get_total_load()," MW")
 plot = "active power"
 
+machine_names = test_obj.get_machines()
+for machine_name in machine_names: 
+    test_obj.set_in_service(machine_name)
+
 test_obj.prepare_dynamic_sim(start_time=0.0, end_time=3.0)
 
 sim_bool = test_obj.run_dynamic_sim()
@@ -28,7 +32,7 @@ print(test_obj.get_machine_list())
 #print(test_obj.get_machines_inertia_list())
 
 if plot == "active power": 
-    _, f1 = test_obj.get_dynamic_results("Synchronous Machine(32).ElmSym", "m:P:bus1")
+    _, f1 = test_obj.get_dynamic_results("Synchronous Machine(33).ElmSym", "m:P:bus1")
     plt.plot(_,f1)
 elif plot == "frequency":
     _, f1 = test_obj.get_dynamic_results("Synchronous Machine(1).ElmSym", "n:fehz:bus1")
@@ -76,6 +80,6 @@ print("Simulation success (false indicate success):")
 print(sim_bool)
 print(test_obj.get_machine_list())
 
-_, f1 = test_obj.get_dynamic_results("Synchronous Machine(2).ElmSym", "m:P:bus1")
-plt.plot(_,f1)
+_, f2 = test_obj.get_dynamic_results("Synchronous Machine(33).ElmSym", "m:P:bus1")
+plt.plot(_,f2)
 plt.show()
