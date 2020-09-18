@@ -24,8 +24,6 @@ class PFactoryGrid(object):
 
         # Activate study case.
         study_case_folder = self.app.GetProjectFolder('study')
-        print("Case study name:") 
-        print(study_case_name)
         study_case_file = study_case_name + '.IntCase'
         self.study_case = study_case_folder.GetContents(study_case_file)[0]
         self.study_case.Activate()
@@ -64,7 +62,7 @@ class PFactoryGrid(object):
         # Get all generator elements
         elements = self.app.GetCalcRelevantObjects("*.ElmSym") # ElmSym data object
         var_names = ["n:fehz:bus1","n:u1:bus1","n:u1:bus1","m:P:bus1","n:Q:bus1",\
-            "m:ui:bus1", "m:ur:bus1"] 
+            "s:fipol"] 
         
         # Get result file.
         self.res = self.app.GetFromStudyCase('*.ElmRes')
@@ -387,7 +385,7 @@ class PFactoryGrid(object):
         if line.bus1 or line.bus2 == bus_name_to:
             name = line.loc_name
             value = line.GetAttribute("c:loading")
-            print("Loading of",name,"is", value, "%")
+            #print("Loading of",name,"is", value, "%")
         return value
 
     def fault_branch(self,bus_from,bus_to):
@@ -440,6 +438,7 @@ class PFactoryGrid(object):
         
     def run_sim(self, time):
         """ Function for running the simulation up to a given time """
+        self.prepare_dynamic_sim(start_time = 1, end_time=time)
         self.run_dynamic_sim()
     
     def run_sim_initial(self,time):
@@ -465,20 +464,29 @@ class PFactoryGrid(object):
                 freq_all.append(freq)
         return freq_all
 
-    def get_voltage_angles(self): 
+    def get_initial_rotor_angles(self): 
         """ Get voltage angles
         """
         # Get machine element (return list with one element)
         machines = self.get_machines()
-        var = ["m:ui:bus1", "m:ur:bus1"]
-        angle = []
+        var = ["s:fipol"]
+        angles = []
         for machine in machines: 
             if self.check_if_in_service(machine):
-                time, u_r = self.get_dynamic_results(machine+".ElmSym",var[1]) 
-                time, u_i = self.get_dynamic_results(machine+".ElmSym",var[0])
-                ang = u_r[len(time)-1] / u_i[len(time)-1]
-                angle.append(math.atan(ang))
-        return angle
+                time, rotor = self.get_dynamic_results(machine+".ElmSym",var[0])
+                angles.append(rotor[len(time)-1])
+            else: 
+                angles.append(0)
+        return angles
+
+    def get_rotor_angles(self,machine): 
+        """ Get voltage angles
+        """
+        # Get machine element (return list with one element)
+        machines = self.app.GetCalcRelevantObjects(machine+".ElmSym")[0]
+        var = ["s:fipol"]
+        time, rotor = self.get_dynamic_results(machine+".ElmSym",var[0])
+        return rotor
 
     def get_time(self): 
         machines = self.get_machines()
