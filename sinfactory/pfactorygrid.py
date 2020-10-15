@@ -1,5 +1,6 @@
 """Module for interfacing with power factory."""
 
+
 import os
 import numpy as np
 import powerfactory as pf
@@ -92,7 +93,7 @@ class PFactoryGrid(object):
             tuple: A tuple containing the time and result vector.
         """
         # Get network element of interest.
-        element = self.app.GetCalcRelevantselfects(elm_name)[0]
+        element = self.app.GetCalcRelevantObjects(elm_name)[0]
     
         # Load results from file.
         self.res.Load()
