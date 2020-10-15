@@ -83,38 +83,38 @@ class PFactoryGrid(object):
 
     def get_dynamic_results(self, elm_name, var_name):
         """Method that returns results from a dynamic simulation.
-
+    
         Args:
             elm_name (str): The name of the element to get the results for
             var_name (str): The name of the variable to the results for
-
+    
         Returns:
             tuple: A tuple containing the time and result vector.
         """
         # Get network element of interest.
-        element = self.app.GetCalcRelevantObjects(elm_name)[0]
-
+        element = self.app.GetCalcRelevantselfects(elm_name)[0]
+    
         # Load results from file.
-        self.app.ResLoadData(self.res)
-
+        self.res.Load()
+    
         # Find column that holds results of interest
-        col_idx = self.app.ResGetIndex(self.res, element, var_name)
-
+        col_idx = self.res.FindColumn(element, var_name)
+    
         if col_idx == -1:
             raise ValueError("Could not find : " + elm_name)
-
+    
         # Get time steps in the result file
-        t_steps = self.app.ResGetValueCount(self.res, 0)
-
+        t_steps = self.res.GetNumberOfColumns()
+    
         # Read results and time
         time = np.zeros(t_steps)
         values = np.zeros(t_steps)
-
+    
         # Iterate through the rows in the result file
         for i in range(t_steps):
-            time[i] = self.app.ResGetData(self.res, i, -1)[1]
-            values[i] = self.app.ResGetData(self.res, i, col_idx)[1]
-
+            time[i] = self.res.GetValue(i, -1)[1]
+            values[i] = self.res.GetValue(i, col_idx)[1]
+    
         return time, values
 
     def set_load_powers(self, p_load, q_load):
