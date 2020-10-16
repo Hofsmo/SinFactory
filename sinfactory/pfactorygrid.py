@@ -105,7 +105,7 @@ class PFactoryGrid(object):
             raise ValueError("Could not find : " + elm_name)
     
         # Get time steps in the result file
-        t_steps = self.res.GetNumberOfColumns()
+        t_steps = self.res.GetNumberOfRows()
     
         # Read results and time
         time = np.zeros(t_steps)
