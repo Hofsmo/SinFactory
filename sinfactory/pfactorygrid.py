@@ -3,6 +3,7 @@
 
 import os
 import numpy as np
+import pandas as pd
 import powerfactory as pf
 
 
@@ -84,39 +85,107 @@ class PFactoryGrid(object):
 
     def get_dynamic_results(self, elm_name, var_name):
         """Method that returns results from a dynamic simulation.
-    
+
         Args:
             elm_name (str): The name of the element to get the results for
             var_name (str): The name of the variable to the results for
-    
+
         Returns:
             tuple: A tuple containing the time and result vector.
         """
         # Get network element of interest.
         element = self.app.GetCalcRelevantObjects(elm_name)[0]
-    
+
         # Load results from file.
         self.res.Load()
-    
+
         # Find column that holds results of interest
         col_idx = self.res.FindColumn(element, var_name)
-    
+
         if col_idx == -1:
             raise ValueError("Could not find : " + elm_name)
-    
+
         # Get time steps in the result file
         t_steps = self.res.GetNumberOfRows()
-    
+
         # Read results and time
         time = np.zeros(t_steps)
         values = np.zeros(t_steps)
-    
+
         # Iterate through the rows in the result file
         for i in range(t_steps):
             time[i] = self.res.GetValue(i, -1)[1]
             values[i] = self.res.GetValue(i, col_idx)[1]
-    
+
         return time, values
+
+    def write_results_to_file(self, outputs, filepath):
+        ''' Writes results to csv-file.
+
+        Args:
+            outputs  (dict):     maps pf-object to list of variables.
+            filepath (string):  filename for the temporary csv-file
+        '''
+
+        self.ComRes = self.app.GetFromStudyCase('ComRes')
+        self.ComRes.head = []  # Header of the file
+        self.ComRes.col_Sep = ';'  # Column separator
+        self.ComRes.dec_Sep = ','  # Decimal separator
+        self.ComRes.iopt_exp = 6  # Export type (csv)
+        self.ComRes.iopt_csel = 1  # Export only user defined vars
+        self.ComRes.ciopt_head = 1  # Use parameter names for variables
+        self.ComRes.iopt_sep = 0  # Don't use system separators
+
+        self.ComRes.f_name = filepath
+        # Adding time as first column
+        resultobj = [self.res]
+        elements = [self.res]
+        cvariable = ['b:tnow']
+        self.ComRes.head = []
+        # Defining all other results
+        for elm_name, var_names in outputs.items():
+            for element in self.app.GetCalcRelevantObjects(elm_name):
+                full_name = element.GetFullName()
+                split_name = full_name.split('\\')
+                full_name_reduced = []
+                for dir in split_name[:-1]:
+                    full_name_reduced.append(dir.split('.')[0])
+                full_name_reduced.append(split_name[-1])
+                full_name_reduced = '\\'.join(full_name_reduced)
+                if not ((elm_name in full_name) or
+                        (elm_name in full_name_reduced)):
+                    continue
+                for variable in var_names:
+                    self.ComRes.head.append(elm_name+'\\'+variable)
+                    elements.append(element)
+                    cvariable.append(variable)
+                    resultobj.append(self.res)
+        self.ComRes.variable = cvariable
+        self.ComRes.resultobj = resultobj
+        self.ComRes.element = elements
+
+        self.ComRes.ExportFullRange()
+
+    def get_results(self, outputs, filepath='results.csv'):
+        ''' Writes simulation results to csv-file and re-import to dataframe.
+
+        Args:
+            outputs  (dict):     maps pf-object to list of variables.
+            filepath (string):  filename for the temporary csv-file
+
+        Returns:
+            dataframe: two-level dataframe with simulation results
+            '''
+
+        self.write_results_to_file(outputs, filepath)
+
+        res = pd.read_csv(filepath, sep=';', decimal=',', header=[0, 1],
+                          index_col=0)
+        res.rename({i: i.split(':')[1].split(' in ')[0]
+                    for i in res.columns.levels[1]}, axis=1, level=1,
+                   inplace=True)
+
+        return res
 
     def set_load_powers(self, p_load, q_load):
         """Method for setting all loads powers.
