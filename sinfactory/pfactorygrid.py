@@ -9,7 +9,7 @@ import powerfactory as pf
 
 class PFactoryGrid(object):
     """Class for interfacing with powerfactory."""
-    def __init__(self, project_name, study_case_name, folder_name=''):
+    def __init__(self, project_name):
         """Class constructor."""
         # Start PowerFactory.
         self.app = pf.GetApplication()
@@ -18,12 +18,12 @@ class PFactoryGrid(object):
             raise RuntimeError("Failed to load powerfactory.")
 
         # Activate project.
-        self.project = self.app.ActivateProject(os.path.join(folder_name,
-                                                             project_name))
+        self.project = self.app.ActivateProject(project_name)
 
         if self.project is None:
             raise RuntimeError("No project activated.")
 
+    def activate_sudy_case(self, study_case_name, folder_name=""):
         # Activate study case.
         study_case_folder = self.app.GetProjectFolder('study')
         study_case_file = study_case_name + '.IntCase'
