@@ -78,12 +78,12 @@ class PFactoryGrid(object):
         self.sim.tstop = end_time
 
         # Verify initial conditions
-        self.inc = True
+        self.inc.iopt_show = True
 
         # Calculate initial conditions
         self.inc.Execute()
 
-        return self.app.ZeroDerivative()
+        return self.inc.ZeroDerivative()
 
     def run_dynamic_sim(self):
         """Run dynamic simulation.
@@ -355,3 +355,11 @@ class PFactoryGrid(object):
         """
         elms = self.app.GetCalcRelevantObjects(name)
         elms[0].snssmin = value
+
+    def get_output_window_content(self):
+        """Returns the messages from the power factory output window."""
+        return self.window.GetContent()
+
+    def clear_output_window(self):
+        """Clears the output window."""
+        self.window.Clear()
