@@ -23,6 +23,8 @@ class PFactoryGrid(object):
         if self.project is None:
             raise RuntimeError("No project activated.")
 
+        self.window = self.app.GetOutputWindow()
+
     def activate_sudy_case(self, study_case_name, folder_name=""):
         # Activate study case.
         study_case_folder = self.app.GetProjectFolder('study')
@@ -49,6 +51,9 @@ class PFactoryGrid(object):
             step_size (float): The time step used for the simulation. The
                 default is 0.01
             end_time: The end time for the simulation. The default is 10.0
+
+        Returns:
+            True if all initial conditions are verified. False otherwise.
         """
         
         self.variables = variables
@@ -75,8 +80,13 @@ class PFactoryGrid(object):
         self.inc.dtgrid = step_size
         self.sim.tstop = end_time
 
+        # Verify initial conditions
+        self.inc.iopt_show = True
+
         # Calculate initial conditions
         self.inc.Execute()
+
+        return self.inc.ZeroDerivative()
 
     def run_dynamic_sim(self):
         """Run dynamic simulation.
@@ -351,3 +361,11 @@ class PFactoryGrid(object):
         """
         elms = self.app.GetCalcRelevantObjects(name)
         elms[0].snssmin = value
+
+    def get_output_window_content(self):
+        """Returns the messages from the power factory output window."""
+        return self.window.GetContent()
+
+    def clear_output_window(self):
+        """Clears the output window."""
+        self.window.Clear()
