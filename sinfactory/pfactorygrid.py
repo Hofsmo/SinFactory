@@ -392,7 +392,7 @@ class PFactoryGrid(object):
             """
 
         self.ldf.ipot_net = balanced
-        self.iopt_aptdist = power_control
-        self.iPbalancing = slack
+        self.ldf.iopt_aptdist = power_control
+        self.ldf.iPbalancing = slack
 
         return self.ldf.Execute()
