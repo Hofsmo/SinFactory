@@ -50,6 +50,9 @@ class PFactoryGrid(object):
                 default is 0.01
             end_time: The end time for the simulation. The default is 10.0
         """
+        
+        self.variables = variables
+        
         # Get result file.
         self.res = self.app.GetFromStudyCase('*.ElmRes')
         # Select result variable to monitor.
@@ -119,11 +122,11 @@ class PFactoryGrid(object):
 
         return time, values
 
-    def write_results_to_file(self, outputs, filepath):
+    def write_results_to_file(self, variables, filepath):
         ''' Writes results to csv-file.
 
         Args:
-            outputs  (dict):     maps pf-object to list of variables.
+            variables  (dict):     maps pf-object to list of variables.
             filepath (string):  filename for the temporary csv-file
         '''
 
@@ -143,7 +146,7 @@ class PFactoryGrid(object):
         cvariable = ['b:tnow']
         self.ComRes.head = []
         # Defining all other results
-        for elm_name, var_names in outputs.items():
+        for elm_name, var_names in variables.items():
             for element in self.app.GetCalcRelevantObjects(elm_name):
                 full_name = element.GetFullName()
                 split_name = full_name.split('\\')
@@ -166,24 +169,26 @@ class PFactoryGrid(object):
 
         self.ComRes.ExportFullRange()
 
-    def get_results(self, outputs, filepath='results.csv'):
+    def get_results(self, variables=None, filepath='results.csv'):
         ''' Writes simulation results to csv-file and re-import to dataframe.
 
         Args:
-            outputs  (dict):     maps pf-object to list of variables.
+            variables  (dict):     maps pf-object to list of variables.
             filepath (string):  filename for the temporary csv-file
 
         Returns:
             dataframe: two-level dataframe with simulation results
             '''
+        if not variables and hasattr(self, 'variables'):
+            variables = self.variables
+        self.write_results_to_file(variables, filepath)
 
-        self.write_results_to_file(outputs, filepath)
-
-        res = pd.read_csv(filepath, sep=';', decimal=',', header=[0, 1],
-                          index_col=0)
+        res = pd.read_csv(filepath, sep=';', decimal=',', header=[0, 1])
         res.rename({i: i.split(':')[1].split(' in ')[0]
                     for i in res.columns.levels[1]}, axis=1, level=1,
                    inplace=True)
+        res.set_index(('All calculations', 'tnow'), inplace=True)
+        res.index.name = 'time'
 
         return res
 
@@ -215,11 +220,12 @@ class PFactoryGrid(object):
         """
         # Collect all generator elements
         gens = self.app.GetCalcRelevantObjects("*.ElmSym")
+        gnum = gens[0].ngnum  # number of paralell generators
         # Set active and reactive power values
         for gen in gens:
             if gen.loc_name in p_gen:
-                gen.pgini = p_gen[gen.loc_name]
-                gen.qgini = q_gen[gen.loc_name]
+                gen.pgini = p_gen[gen.loc_name]/gnum
+                gen.qgini = q_gen[gen.loc_name]/gnum
 
     def set_out_of_service(self, elm_name):
         """Take an element out of service.
