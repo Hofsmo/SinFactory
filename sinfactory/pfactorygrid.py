@@ -62,7 +62,7 @@ class PFactoryGrid(object):
         # Get all generator elements
         elements = self.app.GetCalcRelevantObjects("*.ElmSym") # ElmSym data object
         var_names = ["n:fehz:bus1","n:u1:bus1","n:u1:bus1","m:P:bus1","n:Q:bus1",\
-            "s:fipol"] 
+            "s:firel", "s:outofstep"] 
         
         # Get result file.
         self.res = self.app.GetFromStudyCase('*.ElmRes')
@@ -174,6 +174,18 @@ class PFactoryGrid(object):
         # Add the last value to the array
         gen_tot.append(gen_val)
         return np.array(gen_tot) 
+
+    def get_number_of_parallell(self, machine):
+        """ Get number of parallell machines at plant  
+        """ 
+        generator = self.app.GetCalcRelevantObjects(machine+".ElmSym")[0] # ElmSym data object
+        return generator.ngnum
+
+    def set_number_of_parallell(self, machine, par_num):
+        """ Get number of parallell machines at plant  
+        """ 
+        generator = self.app.GetCalcRelevantObjects(machine+".ElmSym")[0] # ElmSym data object
+        generator.ngnum = par_num
 
     def set_load_powers(self, p_load, q_load):
         """Method for setting all loads powers.
@@ -319,7 +331,11 @@ class PFactoryGrid(object):
             elm_name: Name of elements to take out of service.
         """
         elm = self.app.GetCalcRelevantObjects(elm_name+".ElmSym")[0]
-        elm.outserv = True
+        par_num = self.get_number_of_parallell(elm_name)
+        if par_num > 1: 
+            self.set_number_of_parallell(elm_name, par_num - 1) 
+        else:  
+            elm.outserv = True
 
     def set_in_service(self, elm_name):
         """Take an element back in service.
@@ -382,7 +398,7 @@ class PFactoryGrid(object):
         """ Function for getting the flow on a branch """  
         # Find branch
         line = self.find_branch(bus_from,bus_to)
-        if line.bus1 or line.bus2 == bus_name_to:
+        if line.bus1 or line.bus2 == bus_to:
             name = line.loc_name
             value = line.GetAttribute("c:loading")
             #print("Loading of",name,"is", value, "%")
@@ -405,22 +421,14 @@ class PFactoryGrid(object):
             line_names.append(line.loc_name)
         return line_names 
 
-    def trip_branch(self, line_name,on_off):
+    def trip_branch(self, line_name, time, on_off):
         """ Function for tripping a branch 
         on_off = 0/1 = off/on
         """         
-        switches = self.app.GetCalcRelevantObjects("*.StaSwitch")
-        line = self.app.GetCalcRelevantObjects(line_name+".ElmLne")[0]
-        cub_1 = line.bus1
-        cub_2 = line.bus2
-        for switch in switches: 
-            if switch.fold_id == cub_1: 
-                 switch_1 = switch
-            if switch.fold_id == cub_2: 
-                 switch_2 = switch 
-        # Turn on/off switches
-        switch_1.on_off = on_off
-        switch_2.on_off = on_off
+        self.create_switch_event(line_name,"bus1",time,line_name+"_1")
+        self.create_switch_event(line_name,"bus2",time,line_name+"_2")
+        #switch_1.on_off = on_off
+        #switch_2.on_off = on_off
 
     def find_branch(self, bus_from, bus_to): 
         """ Find branch based on bus bars 
@@ -436,14 +444,9 @@ class PFactoryGrid(object):
                     line = cub.obj_id
         return line
         
-    def run_sim(self, time):
+    def run_sim(self, start, stop):
         """ Function for running the simulation up to a given time """
-        self.prepare_dynamic_sim(start_time = 1, end_time=time)
-        self.run_dynamic_sim()
-    
-    def run_sim_initial(self,time):
-        """ Function for running the simulation initially up to a given time """
-        self.prepare_dynamic_sim(start_time = 0, end_time=time)
+        self.prepare_dynamic_sim(start_time = start, end_time=stop)
         self.run_dynamic_sim()
 
     def is_ref(self, machine): 
@@ -464,17 +467,27 @@ class PFactoryGrid(object):
                 freq_all.append(freq)
         return freq_all
 
+    def pole_slip(self, machine): 
+        """ Check if there has been a pole slip at any active machines 
+        """
+        var = ["s:outofstep"]
+        pole_slip = 0
+        time, outofstep = self.get_dynamic_results(machine+".ElmSym",var[0])
+        if np.count_nonzero(outofstep) > 0: 
+            pole_slip = 1
+        return pole_slip
+
     def get_initial_rotor_angles(self): 
         """ Get voltage angles
         """
         # Get machine element (return list with one element)
         machines = self.get_machines()
-        var = ["s:fipol"]
+        var = ["s:firel"]
         angles = []
         for machine in machines: 
             if self.check_if_in_service(machine):
                 time, rotor = self.get_dynamic_results(machine+".ElmSym",var[0])
-                angles.append(rotor[len(time)-1])
+                angles.append(rotor[0])
             else: 
                 angles.append(0)
         return angles
@@ -483,18 +496,9 @@ class PFactoryGrid(object):
         """ Get voltage angles
         """
         # Get machine element (return list with one element)
-        machines = self.app.GetCalcRelevantObjects(machine+".ElmSym")[0]
-        var = ["s:fipol"]
+        var = ["s:firel"]
         time, rotor = self.get_dynamic_results(machine+".ElmSym",var[0])
-        return rotor
-
-    def get_time(self): 
-        machines = self.get_machines()
-        var = ["m:ui:bus1", "m:ur:bus1"]
-        for machine in machines: 
-            if self.check_if_in_service(machine):
-                time, u_r = self.get_dynamic_results(machine+".ElmSym",var[1]) 
-        return time 
+        return time, rotor
                 
     def get_machines_inertia_list(self):
         """
@@ -589,7 +593,7 @@ class PFactoryGrid(object):
         if scc:
             scc[0].Delete()
 
-    def create_switch_event(self, target_name, time, name):
+    def create_switch_event(self, line_name, bus, time, name):
         """Create a switching event.
 
         Args:
@@ -598,8 +602,19 @@ class PFactoryGrid(object):
             name: Name of the event.
         """
         # Get the element where the fault is applied
-        target = self.app.GetCalcRelevantObjects(target_name)
-
+        
+        line = self.app.GetCalcRelevantObjects(line_name+".ElmLne")[0]
+        if bus == "bus1": 
+            cub = line.bus1
+        elif bus == "bus2": 
+            cub = line.bus2
+        switches = self.app.GetCalcRelevantObjects("*.StaSwitch")
+        for switch in switches: 
+            if switch.fold_id == cub: 
+                 target = switch
+        #print(target_name)
+        #target = self.app.GetCalcRelevantObjects(target_name+".StaSwitch")
+        #print(target)
         # Get the event folder
         evt_folder = self.app.GetFromStudyCase("IntEvt")
 
@@ -611,7 +626,7 @@ class PFactoryGrid(object):
 
         # Set time, target and type of short circuit
         sw.time = time
-        sw.p_target = target[0]
+        sw.p_target = target
 
     def delete_switch_event(self, name):
         """Delete a switch event.
