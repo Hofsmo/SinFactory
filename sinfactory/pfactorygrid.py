@@ -23,7 +23,11 @@ class PFactoryGrid(object):
         if self.project is None:
             raise RuntimeError("No project activated.")
 
+        # Get the output window
         self.window = self.app.GetOutputWindow()
+
+        # Get the load flow obect
+        self.ldf = self.app.GetFromStudyCase("ComLdf")
 
     def activate_sudy_case(self, study_case_name, folder_name=""):
         # Activate study case.
@@ -31,6 +35,7 @@ class PFactoryGrid(object):
         study_case_file = study_case_name + '.IntCase'
         self.study_case = study_case_folder.GetContents(study_case_file)[0]
         self.study_case.Activate()
+        self.ldf = self.app.GetFromStudyCase("ComLdf")
 
     def prepare_dynamic_sim(self, variables, sim_type='rms', start_time=0.0,
                             step_size=0.01, end_time=10.0):
@@ -363,3 +368,31 @@ class PFactoryGrid(object):
     def clear_output_window(self):
         """Clears the output window."""
         self.window.Clear()
+
+    def run_load_flow(self, balanced=0, power_control=0, slack=0):
+        """Method for running a load flow.
+
+        Args:
+            balanced: 
+                0: Three phase balanced load flow.
+                1: Three phase unbalanced load flow.
+                2: DC load flow.
+            power_control:
+                0: As dispatched
+                1: According to secondary control
+                2: According to primary control
+                3: According to inertias
+            slack: This is only relevant if power_control is 0
+                0: By reference machine
+                1: By load at reference bus
+                2: By static generator at reference bus
+                3: By loads
+                4: By synchronous generators
+                5: By synchronous generators and static generators
+            """
+
+        self.ldf.ipot_net = balanced
+        self.ldf.iopt_aptdist = power_control
+        self.ldf.iPbalancing = slack
+
+        return self.ldf.Execute()
