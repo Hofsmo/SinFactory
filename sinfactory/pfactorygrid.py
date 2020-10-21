@@ -1,13 +1,13 @@
 """Module for interfacing with power factory."""
 
-import math 
 import os
 import numpy as np
+import pandas as pd
 import powerfactory as pf
 
 class PFactoryGrid(object):
     """Class for interfacing with powerfactory."""
-    def __init__(self, project_name, study_case_name, folder_name=''):
+    def __init__(self, project_name):
         """Class constructor."""
         # Start PowerFactory.
         self.app = pf.GetApplication() #powerfactory.application object created and returned 
@@ -16,28 +16,31 @@ class PFactoryGrid(object):
             raise RuntimeError("Failed to load powerfactory.")
 
         # Activate project.
-        self.project = self.app.ActivateProject(os.path.join(folder_name,
-                                                             project_name))
+        self.project = self.app.ActivateProject(project_name)
 
         if self.project is None:
             raise RuntimeError("No project activated.")
 
+        # Get the output window
+        self.window = self.app.GetOutputWindow()
+
+        # Get the load flow obect
+        self.ldf = self.app.GetFromStudyCase("ComLdf")
+
+    def activate_sudy_case(self, study_case_name, folder_name=""):
         # Activate study case.
         study_case_folder = self.app.GetProjectFolder('study')
         study_case_file = study_case_name + '.IntCase'
         self.study_case = study_case_folder.GetContents(study_case_file)[0]
         self.study_case.Activate()
-    
+
     def get_ratings(self): 
-        
         # Get all generator elements
         machines = self.app.GetCalcRelevantObjects("*.ElmSym") # ElmSym data object
         ratings = []
         for machine in machines: 
             ratings.append(machine.P_max) 
         return ratings 
-
-
 
     def prepare_dynamic_sim(self, sim_type='rms', start_time=0.0,
                             step_size=0.01, end_time=10.0):
@@ -58,6 +61,9 @@ class PFactoryGrid(object):
             step_size (float): The time step used for the simulation. The
                 default is 0.01
             end_time: The end time for the simulation. The default is 10.0
+
+        Returns:
+            True if all initial conditions are verified. False otherwise.
         """
         # Get all generator elements
         elements = self.app.GetCalcRelevantObjects("*.ElmSym") # ElmSym data object
@@ -82,8 +88,13 @@ class PFactoryGrid(object):
         self.inc.dtgrid = step_size
         self.sim.tstop = end_time
 
+        # Verify initial conditions
+        self.inc.iopt_show = True
+
         # Calculate initial conditions
         self.inc.Execute()
+
+        return self.inc.ZeroDerivative()
 
     def run_dynamic_sim(self):
         """Run dynamic simulation.
@@ -111,13 +122,13 @@ class PFactoryGrid(object):
         self.res.Load() 
 
         # Find column that holds results of interest
-        col_idx = self.app.ResGetIndex(self.res, element, var_name)
+        col_idx = self.res.FindColumn(element, var_name)
 
         if col_idx == -1:
             raise ValueError("Could not find : ", elm_name)
 
         # Get time steps in the result file
-        t_steps = self.app.ResGetValueCount(self.res, 0)
+        t_steps = self.res.GetNumberOfRows()
 
         # Read results and time
         time = np.zeros(t_steps)
@@ -125,8 +136,8 @@ class PFactoryGrid(object):
 
         # Iterate through the rows in the result file
         for i in range(t_steps):
-            time[i] = self.app.ResGetData(self.res, i, -1)[1]
-            values[i] = self.app.ResGetData(self.res, i, col_idx)[1]
+            time[i] = self.res.GetValue(i, -1)[1]
+            values[i] = self.res.GetValue(i, col_idx)[1]
 
         return time, values
 
@@ -187,6 +198,74 @@ class PFactoryGrid(object):
         generator = self.app.GetCalcRelevantObjects(machine+".ElmSym")[0] # ElmSym data object
         generator.ngnum = par_num
 
+    def write_results_to_file(self, outputs, filepath):
+        ''' Writes results to csv-file.
+
+        Args:
+            outputs  (dict):     maps pf-object to list of variables.
+            filepath (string):  filename for the temporary csv-file
+        '''
+
+        self.ComRes = self.app.GetFromStudyCase('ComRes')
+        self.ComRes.head = []  # Header of the file
+        self.ComRes.col_Sep = ';'  # Column separator
+        self.ComRes.dec_Sep = ','  # Decimal separator
+        self.ComRes.iopt_exp = 6  # Export type (csv)
+        self.ComRes.iopt_csel = 1  # Export only user defined vars
+        self.ComRes.ciopt_head = 1  # Use parameter names for variables
+        self.ComRes.iopt_sep = 0  # Don't use system separators
+
+        self.ComRes.f_name = filepath
+        # Adding time as first column
+        resultobj = [self.res]
+        elements = [self.res]
+        cvariable = ['b:tnow']
+        self.ComRes.head = []
+        # Defining all other results
+        for elm_name, var_names in outputs.items():
+            for element in self.app.GetCalcRelevantObjects(elm_name):
+                full_name = element.GetFullName()
+                split_name = full_name.split('\\')
+                full_name_reduced = []
+                for dir in split_name[:-1]:
+                    full_name_reduced.append(dir.split('.')[0])
+                full_name_reduced.append(split_name[-1])
+                full_name_reduced = '\\'.join(full_name_reduced)
+                if not ((elm_name in full_name) or
+                        (elm_name in full_name_reduced)):
+                    continue
+                for variable in var_names:
+                    self.ComRes.head.append(elm_name+'\\'+variable)
+                    elements.append(element)
+                    cvariable.append(variable)
+                    resultobj.append(self.res)
+        self.ComRes.variable = cvariable
+        self.ComRes.resultobj = resultobj
+        self.ComRes.element = elements
+
+        self.ComRes.ExportFullRange()
+
+    def get_results(self, outputs, filepath='results.csv'):
+        ''' Writes simulation results to csv-file and re-import to dataframe.
+
+        Args:
+            outputs  (dict):     maps pf-object to list of variables.
+            filepath (string):  filename for the temporary csv-file
+
+        Returns:
+            dataframe: two-level dataframe with simulation results
+            '''
+
+        self.write_results_to_file(outputs, filepath)
+
+        res = pd.read_csv(filepath, sep=';', decimal=',', header=[0, 1],
+                          index_col=0)
+        res.rename({i: i.split(':')[1].split(' in ')[0]
+                    for i in res.columns.levels[1]}, axis=1, level=1,
+                   inplace=True)
+
+        return res
+
     def set_load_powers(self, p_load, q_load):
         """Method for setting all loads powers.
 
@@ -220,8 +299,6 @@ class PFactoryGrid(object):
             if gen.loc_name in p_gen:
                 gen.pgini = p_gen[gen.loc_name]
                 gen.qgini = q_gen[gen.loc_name]
-
-    
 
     def get_machine_gen(self, m): 
         """ Get active power generation from a specific machine 
@@ -644,3 +721,59 @@ class PFactoryGrid(object):
             sw[0].Delete()
         if sww:
             sww[0].Delete()
+
+    def change_generator_inertia_constant(self, name, value):
+        """Change the inertia constant of a generator.
+
+        Args:
+            name: Name of the generator.
+            value: The inertia constant value.
+        """
+        elms = self.app.GetCalcRelevantObjects(name)
+        elms[0].h = value
+
+    def change_grid_min_short_circuit_power(self, name, value):
+        """Change the minimum short circuit power of an external grid.
+
+        Args:
+            name: Name of the external grid.
+            value: The minimum short circuit power value.
+        """
+        elms = self.app.GetCalcRelevantObjects(name)
+        elms[0].snssmin = value
+
+    def get_output_window_content(self):
+        """Returns the messages from the power factory output window."""
+        return self.window.GetContent()
+
+    def clear_output_window(self):
+        """Clears the output window."""
+        self.window.Clear()
+
+    def run_load_flow(self, balanced=0, power_control=0, slack=0):
+        """Method for running a load flow.
+
+        Args:
+            balanced: 
+                0: Three phase balanced load flow.
+                1: Three phase unbalanced load flow.
+                2: DC load flow.
+            power_control:
+                0: As dispatched
+                1: According to secondary control
+                2: According to primary control
+                3: According to inertias
+            slack: This is only relevant if power_control is 0
+                0: By reference machine
+                1: By load at reference bus
+                2: By static generator at reference bus
+                3: By loads
+                4: By synchronous generators
+                5: By synchronous generators and static generators
+            """
+
+        self.ldf.ipot_net = balanced
+        self.ldf.iopt_aptdist = power_control
+        self.ldf.iPbalancing = slack
+
+        return self.ldf.Execute()

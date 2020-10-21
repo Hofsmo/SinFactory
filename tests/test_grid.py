@@ -72,11 +72,8 @@ def test_change_load(test_system):
 
 def test_change_gen(test_system):
     """Check if a generator can be changed"""
-<<<<<<< HEAD
-    p_gen = {"SM": 18}
-=======
+
     p_gen = {"SM": 10}
->>>>>>> master
     q_gen = {"SM": 0}
 
     monitor = {"SM.ElmSym": ["m:P:bus1"]}
@@ -88,12 +85,7 @@ def test_change_gen(test_system):
 
     _, p = test_system.get_dynamic_results("SM.ElmSym", "m:P:bus1")
 
-<<<<<<< HEAD
-    assert p[20] == pytest.approx(20.0, abs=0.1)
-=======
     assert p[-1] == pytest.approx(10.0, abs=0.1)
->>>>>>> master
-
 
 def test_create_short_circuit(test_system):
     """Check if a short circuit can be created"""
