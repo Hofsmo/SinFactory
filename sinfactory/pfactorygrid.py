@@ -55,9 +55,9 @@ class PFactoryGrid(object):
         Returns:
             True if all initial conditions are verified. False otherwise.
         """
-        
+
         self.variables = variables
-        
+
         # Get result file.
         self.res = self.app.GetFromStudyCase('*.ElmRes')
         # Select result variable to monitor.
