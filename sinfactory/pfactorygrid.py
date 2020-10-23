@@ -310,6 +310,8 @@ class PFactoryGrid(object):
         """
         # Get the element where the fault is applied
         target = self.app.GetCalcRelevantObjects(target_name)
+        if len(target) == 0:
+            raise ValueError("No element named ", target_name)
 
         # Get the event folder
         evt_folder = self.app.GetFromStudyCase("IntEvt")
@@ -323,6 +325,20 @@ class PFactoryGrid(object):
         # Set time, target and type of short circuit
         sw.time = time
         sw.p_target = target[0]
+
+    def get_line_cubicles(self, line_name):
+        """Returns the cubicles at each end of a line 
+
+        Args:
+            line_name: The name of the line
+        """
+        line = self.app.GetCalcRelevantObjects(line_name)
+
+        if not len(line):
+            raise ValueError("No line named ", line_name)
+
+        return [line[0].bus1.GetFullName(),
+                line[0].bus2.GetFullName()]
 
     def delete_switch_event(self, name):
         """Delete a switch event.
