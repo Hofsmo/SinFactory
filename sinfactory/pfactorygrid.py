@@ -5,6 +5,7 @@ import os
 import numpy as np
 import pandas as pd
 import powerfactory as pf
+from sinfactory.line import PowerFactoryLine
 
 
 class PFactoryGrid(object):
@@ -28,6 +29,10 @@ class PFactoryGrid(object):
 
         # Get the load flow obect
         self.ldf = self.app.GetFromStudyCase("ComLdf")
+        
+        self.lines = {}
+        for line in self.app.GetCalcRelevantObjects("*.ElmLne"):
+            self.lines[line.cDisplayName] = PowerFactoryLine(self.app, line)
 
     def activate_sudy_case(self, study_case_name, folder_name=""):
         # Activate study case.
@@ -300,18 +305,18 @@ class PFactoryGrid(object):
         if scc:
             scc[0].Delete()
 
-    def create_switch_event(self, target_name, time, name):
+    def create_switch_event(self, target_name, time, name, target=None):
         """Create a switching event.
 
         Args:
-            target_name: Component to switch.
+            target_name: Name of component to switch.
             time: When to switch
             name: Name of the event.
+            comp: Object to create the event for
         """
-        # Get the element where the fault is applied
-        target = self.app.GetCalcRelevantObjects(target_name)
-        if len(target) == 0:
-            raise ValueError("No element named ", target_name)
+        if target is None:
+            # Get the element where the fault is applied
+            target = self.app.GetCalcRelevantObjects(target_name)[0]
 
         # Get the event folder
         evt_folder = self.app.GetFromStudyCase("IntEvt")
@@ -324,21 +329,20 @@ class PFactoryGrid(object):
 
         # Set time, target and type of short circuit
         sw.time = time
-        sw.p_target = target[0]
+        sw.p_target = target
 
-    def get_line_cubicles(self, line_name):
-        """Returns the cubicles at each end of a line 
-
-        Args:
-            line_name: The name of the line
-        """
-        line = self.app.GetCalcRelevantObjects(line_name)
-
-        if not len(line):
-            raise ValueError("No line named ", line_name)
-
-        return [line[0].bus1.GetFullName(),
-                line[0].bus2.GetFullName()]
+    def create_trip_line_event(self, target_name, time):
+        """Trips a line at both ends"""
+        i = 0
+        for switch in self.lines[target_name].switches:
+            self.create_switch_event("", time, "trip-"+target_name+str(i), 
+                                     switch)
+            i += 1
+    
+    def delete_trip_line_event(self, target_name):
+        """Trips a line at both ends"""
+        for i in ["0", "1"]:
+            self.delete_switch_event("trip-"+target_name+i)
 
     def delete_switch_event(self, name):
         """Delete a switch event.
