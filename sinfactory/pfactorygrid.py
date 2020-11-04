@@ -25,9 +25,9 @@ class PFactoryGrid(object):
         # Get the output window
         self.window = self.app.GetOutputWindow()
 
-        # Get the load flow obect
+        # Get the load flow object
         self.ldf = self.app.GetFromStudyCase("ComLdf")
-        
+
         self.lines = {}
         for line in self.app.GetCalcRelevantObjects("*.ElmLne"):
             self.lines[line.cDisplayName] = PowerFactoryLine(self.app, line)
@@ -383,10 +383,17 @@ class PFactoryGrid(object):
         return machine_name_list
     
     def check_if_in_service(self, machine): 
+        """ 
+        Check if machine is in service
+        Returns 1 if the machine is in service 
+        """ 
         obj = self.app.GetCalcRelevantObjects(machine+".ElmSym")[0]
         return not obj.outserv
     
     def get_area_gen_in(self,machine): 
+        """
+        Get the area a generator is in
+        """ 
         obj = self.app.GetCalcRelevantObjects(machine+".ElmSym")[0]
         return int(obj.cpArea.loc_name)
 
@@ -517,15 +524,6 @@ class PFactoryGrid(object):
             line_names.append(line.loc_name)
         return line_names 
 
-    def trip_branch(self, line_name, time, on_off):
-        ''' Function for tripping a branch 
-        on_off = 0/1 = off/on
-        '''         
-        self.create_switch_event(line_name,"bus1",time,line_name+"_1")
-        self.create_switch_event(line_name,"bus2",time,line_name+"_2")
-        #switch_1.on_off = on_off
-        #switch_2.on_off = on_off
-
     def find_branch(self, bus_from, bus_to): 
         ''' Find branch based on bus bars 
         '''
@@ -583,12 +581,12 @@ class PFactoryGrid(object):
         var = 'firel'
         machines = self.app.GetCalcRelevantObjects("*.ElmSym")
 
-        result[~result.index.duplicated()]
+        result = result[~result.index.duplicated()]
         initial_ang = []
         for m in machines:          
             if self.check_if_in_service(m.loc_name):
                 angle = result.loc[0,(m.loc_name,var)].values
-                initial_ang.append(angle[0,0])
+                initial_ang.append(angle[0])
             else: 
                 initial_ang.append(0)
         return initial_ang
