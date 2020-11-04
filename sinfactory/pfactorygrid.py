@@ -203,11 +203,12 @@ class PFactoryGrid(object):
             variables = self.variables
         self.write_results_to_file(variables, filepath)
 
-        res = pd.read_csv(filepath, sep=';', decimal=',', header=[0, 1])
+        res = pd.read_csv(filepath, sep=';', decimal=',', header=[0, 1],
+                          index_col=0)
         res.rename({i: i.split(':')[1].split(' in ')[0]
                     for i in res.columns.levels[1]}, axis=1, level=1,
                    inplace=True)
-        res.set_index(('All calculations', 'tnow'), inplace=True)
+        res.columns.rename(('unit', 'variable'), level=[0, 1], inplace=True)
         res.index.name = 'time'
 
         return res
@@ -426,7 +427,11 @@ class PFactoryGrid(object):
     def set_element_OPF_attr(self, attr, element_type,
                              relative_attr={'Pmin_uc': 'P_max',
                                             'Pmax_uc': 'P_max'}):
-        """ Set attributes of element in optimal power flow """
+        """ Set attributes of element in optimal power flow
+        Args:
+            attribute (str)
+            element_type (str) e.g. *.ElmSym for all generators
+        """
         for elm in self.app.GetCalcRelevantObjects(element_type):
             for k, v in attr.items():
                 if k in relative_attr.keys():
@@ -435,31 +440,6 @@ class PFactoryGrid(object):
                     setattr(elm, k, v_mod.tolist())
                 else:
                     setattr(elm, k, v)
-
-    # def set_generator_OPF_attr(self, attr):
-    #     """ Set attributes of generators in optimal power flow
-    #     Args:
-    #     ictpg: Active power control (boolean)
-    #     ictqg: Reactive Power control (boolean)
-    #     iOPFCPmin: Active power min. limit (boolean)
-    #     iOPFCPmax: Active power max. limit (boolean)
-    #     isPinPU: Specify limits with p.u. values (boolean)
-    #     Pmin_uc: Value of min. limit (float)
-    #     Pmax_uc: Value of max. limit (float)
-    #     iOPFCQmin: Reactive power min. limit (boolean)
-    #     iOPFCQmax: Reactive power max. limit (boolean)
-    #     iqtype: Use limits specified in generator-type (boolean)
-    #     """
-    #     relative_attr = ['Pmin_uc', 'Pmax_uc']
-    #     for gen in self.app.GetCalcRelevantObjects('*.ElmSym'):
-    #         for k, v in attr.items():
-    #             if k in relative_attr:
-    #                 v_mod = np.array(v)*gen.P_max
-    #                 setattr(gen, k, v_mod.tolist())
-    #             else:
-    #                 setattr(gen, k, v)
-
-        # self.app.GetCalcRelevantObjects('*.ElmSym')[0].ictqg = True
 
     def set_generator_OPF_cost(self, cost_dict):
         """ Set generator cost attributes for optimal power flow
