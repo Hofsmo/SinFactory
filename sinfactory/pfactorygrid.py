@@ -549,3 +549,16 @@ class PFactoryGrid(object):
         opf_res = pd.DataFrame(opf_res).unstack().dropna()
 
         return opf_res
+
+    def get_inter_area_flow(self, area1, area2):
+        """Returns the flow between two area
+
+        Args:
+            area1: Name of the first area.
+            area2: Name of the second area.
+        """
+        obj1 = self.app.GetCalcRelevantObjects(area1+".ElmArea")[0]
+        obj2 = self.app.GetCalcRelevantObjects(area2+".ElmArea")[0]
+
+        obj1.CalculateInterchangeTo(obj2)
+        return obj1.GetAttribute("c:Pinter")
