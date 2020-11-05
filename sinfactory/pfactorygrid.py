@@ -353,37 +353,16 @@ class PFactoryGrid(object):
         gen = machine.pgini
         return np.array(gen) 
 
-    def change_bus_load(self,bus_number,new_load):
+    def change_bus_load(self,load_name,new_load):
         ''' Change load at a specific load 
 
         Args: 
-            bus_number: name of bus the load is connected to (str)
+            load_name: name of load
             load: value of new load in MW 
         '''
-        bus_name = "bus"+str(bus_number)
-        cubs = self.app.GetCalcRelevantObjects("*.StaCubic")
-        # Iterate through all cubs 
-        for cub in cubs: 
-            # Check if cub is connected to the bus
-            if cub.cterm.loc_name == bus_name: 
-                elm_type = cub.obj_id.GetClassName()
-                # Check if a connected element is a load
-                if elm_type == "ElmLod": 
-                    elm_name = cub.obj_id.loc_name+".ElmLod"
-
         # Get the load element by returning a list with one element            
-        load = self.app.GetCalcRelevantObjects(elm_name) 
-        load[0].plini = new_load
-
-        # Alternative with other input: 
-        '''" Alternative with these Args:
-            elm_name: Name of elements to change load.
-            new_load: value of active power which the load is chaning to
-
-            Code is simply:  
-            load = self.app.GetCalcRelevantObjects(elm_name) # return list with one element
-            load[0].plini = new_load
-        ''' 
+        load = self.app.GetCalcRelevantObjects(load_name+".ElmLod")[0]
+        load.plini = new_load
 
     def change_machine_gen(self,machine,new_gen):
         ''' Change active power generation at a specific machine 
@@ -393,8 +372,8 @@ class PFactoryGrid(object):
             gen: value of new generation in MW 
         '''
         # Get machine element (return list with one element)
-        generator = self.app.GetCalcRelevantObjects(machine+".ElmSym") 
-        generator[0].pgini = new_gen
+        generator = self.app.GetCalcRelevantObjects(machine+".ElmSym")[0]
+        generator.pgini = new_gen
     
     def get_machines(self): 
         ''' Function that gets a list of all machine names
@@ -418,17 +397,28 @@ class PFactoryGrid(object):
         """ 
         obj = self.app.GetCalcRelevantObjects(machine+".ElmSym")[0]
         return not obj.outserv
-    
-    def get_area_gen_in(self,machine): 
+
+    def get_area_load_in(self,load_name): 
+        """ Function to get the name of the area the load is in
+
+        Args: 
+            Name of the load
+        Returns: 
+            Name of the area the load is in 
+        """ 
+        load = self.app.GetCalcRelevantObjects(load_name+".ElmLod")[0]
+        return int(load.cpArea.loc_name)
+
+    def get_area_gen_in(self,machine_name): 
         """ Function to get the name of the area the machine is in
 
         Args: 
-            Name of the machine
+            machine_name: Name of the machine
         Returns: 
             Name of the area the machine is in 
         """ 
-        obj = self.app.GetCalcRelevantObjects(machine+".ElmSym")[0]
-        return int(obj.cpArea.loc_name)
+        machine = self.app.GetCalcRelevantObjects(machine_name+".ElmSym")[0]
+        return int(machine.cpArea.loc_name)
 
     def get_area_gen(self, area_name):
         ''' Get total generation in a specific area 
@@ -506,22 +496,18 @@ class PFactoryGrid(object):
         elms = self.app.GetCalcRelevantObjects(name)
         elms[0].snssmin = value
     
-    def get_load_busses(self):
-        ''' Function for getting the bus names with loads as an array
+    def get_list_of_loads(self):
+        ''' Function for getting a list of all load names
 
         Returns: 
-            vector of bus numbers which has a load connected 
+            vector of load names
         '''
-        load_buses = []
-        cubs = self.app.GetCalcRelevantObjects("*.StaCubic")
-        for cub in cubs: 
-            elm_type = cub.obj_id.GetClassName()
-            if elm_type == "ElmLod":
-                # Stores the bus number the load is connected to (Possible to store the elements, i.e. remove .loc_name)
-                load_buses.append(cub.cterm.loc_name[3:8]) 
-        return load_buses
+        load_list = [] 
+        loads = self.app.GetCalcRelevantObjects("*.ElmLod")
+        for load in loads: 
+            load_list.append(load.loc_name)
+        return load_list
         
-
     def power_flow_calc(self):
         ''' Function for running power flow 
         
