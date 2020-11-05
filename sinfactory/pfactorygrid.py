@@ -770,26 +770,6 @@ class PFactoryGrid(object):
         if sww:
             sww[0].Delete()
 
-    def change_generator_inertia_constant(self, name, value):
-        '''Change the inertia constant of a generator.
-
-        Args:
-            name: Name of the generator.
-            value: The inertia constant value.
-        '''
-        elms = self.app.GetCalcRelevantObjects(name)
-        elms[0].h = value
-
-    def change_grid_min_short_circuit_power(self, name, value):
-        '''Change the minimum short circuit power of an external grid.
-
-        Args:
-            name: Name of the external grid.
-            value: The minimum short circuit power value.
-        '''
-        elms = self.app.GetCalcRelevantObjects(name)
-        elms[0].snssmin = value
-
     def get_output_window_content(self):
         '''Returns the messages from the power factory output window.'''
         return self.window.GetContent()
