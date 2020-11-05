@@ -1,29 +1,31 @@
 import sys, os
+import numpy as np
 sys.path.append(os.path.abspath(os.path.join('..', 'sinfactory')))
 #print("System path:") 
 #print(sys.path)
 from sinfactory.pfactorygrid import PFactoryGrid as PFactoryGrid
 import matplotlib.pyplot as plt
 
-project_name = "RaPid"
+project_name = "RaPid_compact_bus_sys"
 study_case_name = "No_events" # "Case to compare with PSSE (Scenario 3)"
-test_obj = PFactoryGrid(project_name=project_name,study_case_name=study_case_name)
-print("Total generation: ",test_obj.get_total_gen()," MW")
-print("Total load: ",test_obj.get_total_load()," MW")
+test_obj = PFactoryGrid(project_name=project_name) 
+test_obj.activate_study_case(study_case_name=study_case_name)# set variables 
+var_names = ("n:fehz:bus1","n:u1:bus1","n:u1:bus1","m:P:bus1","n:Q:bus1",\
+    "s:firel", "s:outofstep")  
+# map machines in service to variables
+output = test_obj.generate_variables(var_names)
+
+test_obj.power_flow_calc()
+
 plot = "active power"
 
 machine_names = test_obj.get_machines()
 for machine_name in machine_names: 
     test_obj.set_in_service(machine_name)
 
-test_obj.prepare_dynamic_sim(start_time=0.0, end_time=3.0)
+test_obj.run_sim(output, 0, 10)  
 
-sim_bool = test_obj.run_dynamic_sim()
-print("Simulation success (false indicate success):")
-print(sim_bool)
-print(test_obj.get_machine_list())
-
-#test_obj.switch_control("Line10",1)
+print("get branch flow at line 10: ",test_obj.get_branch_flow("Line10"))
 
 #machine_list = test_obj.get_machine_list()
 #print(machine_list.size)
