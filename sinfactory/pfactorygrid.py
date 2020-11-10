@@ -48,7 +48,7 @@ class PFactoryGrid(object):
         machines = self.app.GetCalcRelevantObjects("*.ElmSym") # ElmSym data object
         ratings = []
         for machine in machines: 
-            ratings.append(machine.P_max) 
+            ratings.append(machine.P_max* self.get_number_of_parallell(machine.loc_name))
         return ratings 
 
     def prepare_dynamic_sim(self, sim_type='rms', variables = {}, start_time=0.0,
@@ -276,9 +276,9 @@ class PFactoryGrid(object):
             if gen.bus1 != bus: 
                 bus = gen.bus1
                 gen_tot.append(gen_val)
-                gen_val = gen.pgini
+                gen_val = gen.pgini*self.get_number_of_parallell(gen.loc_name)
             else: 
-                gen_val = gen_val + gen.pgini
+                gen_val = gen_val + gen.pgini*self.get_number_of_parallell(gen.loc_name)
         # Add the last value to the array
         gen_tot.append(gen_val)
         return np.array(gen_tot) 
@@ -434,7 +434,7 @@ class PFactoryGrid(object):
         # Iterate through machine elements to add up generation (area name in powerfactory  MUST be just a number)
         for gen in gens:
             if int(gen.cpArea.loc_name) == area_name: 
-                gen_tot_area = gen_tot_area + gen.pgini
+                gen_tot_area += gen.pgini
         return gen_tot_area
 
     def get_area_load(self, area_name):
@@ -451,7 +451,7 @@ class PFactoryGrid(object):
         # Iterate through machine elements to add up generation (area name in powerfactory  MUST be just a number)
         for load in loads:
             if int(load.cpArea.loc_name) == area_name: 
-                load_tot_area = load_tot_area + load.plini
+                load_tot_area += load.plini
         return load_tot_area
 
     def set_out_of_service(self, elm_name):
@@ -740,19 +740,6 @@ class PFactoryGrid(object):
         sw.time = time
         sw.p_target = target
 
-    def create_trip_line_event(self, target_name, time):
-        """Trips a line at both ends"""
-        i = 0
-        for switch in self.lines[target_name].switches:
-            self.create_switch_event("", time, "trip-"+target_name+str(i), 
-                                     switch)
-            i += 1
-    
-    def delete_trip_line_event(self, target_name):
-        """Trips a line at both ends"""
-        for i in ["0", "1"]:
-            self.delete_switch_event("trip-"+target_name+i)
-
     def delete_switch_event(self, name):
         '''Delete a switch event.
 
@@ -769,6 +756,19 @@ class PFactoryGrid(object):
             sw[0].Delete()
         if sww:
             sww[0].Delete()
+    
+    def create_trip_line_event(self, target_name, time):
+        """Trips a line at both ends"""
+        i = 0
+        for switch in self.lines[target_name].switches:
+            self.create_switch_event("", time, "trip-"+target_name+str(i), 
+                                     switch)
+            i += 1
+    
+    def delete_trip_line_event(self, target_name):
+        """Trips a line at both ends"""
+        for i in ["0", "1"]:
+            self.delete_switch_event("trip-"+target_name+i)
 
     def get_output_window_content(self):
         '''Returns the messages from the power factory output window.'''

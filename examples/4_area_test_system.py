@@ -14,7 +14,6 @@ var_names = ("n:fehz:bus1","n:u1:bus1","n:u1:bus1","m:P:bus1","n:Q:bus1",\
     "s:firel", "s:outofstep")  
 # map machines in service to variables
 output = test_obj.generate_variables(var_names)
-
 test_obj.power_flow_calc()
 
 plot = "active power"
@@ -60,19 +59,11 @@ elif plot == "voltage":
     plt.xlabel("Time [s]")
     plt.ylabel("Voltage [p.u.]")
 
-plt.show()
-
+#plt.show()
+print("Total generation at each bus: ", test_obj.get_total_gen())
 print("Generation and load of area 1:")
-print("Generation [MW]: ", test_obj.get_area_gen("Area1"))
-print("Load [MW]: ", test_obj.get_area_load("Area1"))
-
-test_obj.power_flow_calc() 
-test_obj.get_branch_flow(10021, 30023) 
-load_buses = test_obj.get_load_busses() 
-print(load_buses) 
-machine_list = test_obj.get_machine_list()
-print(machine_list.size)
-print(machine_list.T)
+print("Generation [MW]: ", test_obj.get_area_gen(1))
+print("Load [MW]: ", test_obj.get_area_load(1))
 
 # Continue simulation 
 test_obj.prepare_dynamic_sim(start_time=3.0, end_time=5.0)
@@ -80,7 +71,18 @@ test_obj.prepare_dynamic_sim(start_time=3.0, end_time=5.0)
 sim_bool = test_obj.run_dynamic_sim()
 print("Simulation success (false indicate success):")
 print(sim_bool)
-print(test_obj.get_machine_list())
+
+
+result = test_obj.get_results(output,filepath="results.csv") # result is a dataframe with all machines and variables
+pole_slip_bool = 0 
+for machine in test_obj.get_machines(): 
+    if test_obj.pole_slip(machine,result): 
+        pole_slip_bool = 1
+if pole_slip_bool == 1: 
+    print("The system is not stable.")
+else: 
+    print("The system is stable.")
+
 
 _, f2 = test_obj.get_dynamic_results("Synchronous Machine(33).ElmSym", "m:P:bus1")
 plt.plot(_,f2)
