@@ -605,8 +605,18 @@ class PFactoryGrid(object):
         initial_ang = []
         for m in machines:          
             if self.check_if_in_service(m.loc_name):
-                angle = result.loc[0,(m.loc_name,var)].values
-                initial_ang.append(angle[0])
+                pole_slip = result.loc[0,(m.loc_name,'outofstep')]#always float
+                #print("Type of pole slip: ", type(pole_slip))
+                angle = result.loc[0,(m.loc_name,var)]#.values
+                #print(angle)
+                #print(type(angle))
+                if type(angle) != type(pole_slip): 
+                    #print("Before replace:", angle)
+                    angle = angle.replace(',','.')
+                    #print("After replace:", angle)
+                    angle = float(angle) 
+                    #print("Type after change: ", type(angle))
+                initial_ang.append(angle)
             else: 
                 initial_ang.append(0)
         return initial_ang
