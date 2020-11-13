@@ -48,7 +48,7 @@ class PFactoryGrid(object):
         machines = self.app.GetCalcRelevantObjects("*.ElmSym") # ElmSym data object
         ratings = []
         for machine in machines: 
-            ratings.append(machine.P_max* self.get_number_of_parallell(machine.loc_name))
+            ratings.append(machine.P_max) #* self.get_number_of_parallell(machine.loc_name))
         return ratings 
 
     def prepare_dynamic_sim(self, sim_type='rms', variables = {}, start_time=0.0,
@@ -276,9 +276,9 @@ class PFactoryGrid(object):
             if gen.bus1 != bus: 
                 bus = gen.bus1
                 gen_tot.append(gen_val)
-                gen_val = gen.pgini*self.get_number_of_parallell(gen.loc_name)
+                gen_val = gen.pgini#*self.get_number_of_parallell(gen.loc_name)
             else: 
-                gen_val = gen_val + gen.pgini*self.get_number_of_parallell(gen.loc_name)
+                gen_val = gen_val + gen.pgini#*self.get_number_of_parallell(gen.loc_name)
         # Add the last value to the array
         gen_tot.append(gen_val)
         return np.array(gen_tot) 
