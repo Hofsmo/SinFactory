@@ -178,6 +178,7 @@ def test_get_list_of_loads(test_system):
 
 def test_get_branch_flow(test_system): 
     """Testing if getting the load factor of a branch is correct."""
+    test_system.run_load_flow() 
 
     assert test_system.get_branch_flow("Line12") == pytest.approx(68.8534, abs=0.001)
 
