@@ -483,8 +483,9 @@ class PFactoryGrid(object):
             name: Name of the generator.
             value: The inertia constant value.
         '''
-        elms = self.app.GetCalcRelevantObjects(name)
-        elms[0].h = value
+        machine = self.app.GetCalcRelevantObjects(name+".ElmSym")[0]
+        machine_type = machine.typ_id
+        machine_type.h = value
 
     def change_grid_min_short_circuit_power(self, name, value):
         '''Change the minimum short circuit power of an external grid.
@@ -507,28 +508,7 @@ class PFactoryGrid(object):
         for load in loads: 
             load_list.append(load.loc_name)
         return load_list
-        
-    def power_flow_calc(self):
-        ''' Function for running power flow 
-        
-        Returns
-            load flow object .ComLdf 
-        '''
-        LDF = self.app.GetFromStudyCase("ComLdf")
-        LDF.CalcParams()
-        LDF.Execute() 
-        return LDF 
 
-    def power_calc_converged(self):
-        ''' Function for checking whether power flow calc converged 
-        
-        Returns
-            True if load flow converged and falise if not 
-        '''
-        LDF = self.app.GetFromStudyCase("ComLdf")
-        LDF.CalcParams()
-        return not LDF.Execute() # after not: LDF.execut return 0 when sucsess
-    
     def get_branch_flow(self,line_name):
         ''' Function for getting the flow on a branch 
         
