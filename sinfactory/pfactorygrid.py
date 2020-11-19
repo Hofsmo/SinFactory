@@ -523,11 +523,11 @@ class PFactoryGrid(object):
         ''' Function for checking whether power flow calc converged 
         
         Returns
-            False if load flow converged and true if not 
+            True if load flow converged and falise if not 
         '''
         LDF = self.app.GetFromStudyCase("ComLdf")
         LDF.CalcParams()
-        return not LDF.Execute() # 0 is sucsess
+        return not LDF.Execute() # after not: LDF.execut return 0 when sucsess
     
     def get_branch_flow(self,line_name):
         ''' Function for getting the flow on a branch 
@@ -553,17 +553,6 @@ class PFactoryGrid(object):
             line_names.append(line.loc_name)
         return line_names 
 
-    def run_sim(self, output, start, stop):
-        ''' Function for running the simulation up to a given time 
-
-        Args:   
-            output: dictionary with variables to each machine 
-            start: start time for simulation 
-            stop: stop time for simulation 
-        '''
-        self.prepare_dynamic_sim(variables = output, start_time = start, end_time=stop)
-        self.run_dynamic_sim()
-
     def is_ref(self, machine_name): 
         ''' check if machine is the reference machine 
         
@@ -585,10 +574,11 @@ class PFactoryGrid(object):
             true if there has been a pole slip at machine
         '''        
         var = 'outofstep'
-        angle = result.loc[:1000,(machine_name,var)].values
-        pole_slip = 0
-        if np.count_nonzero(angle) > 0: 
-            pole_slip = 1
+        pole_var = result.loc[:1000,(machine_name,var)].values
+        pole_slip = False
+        if np.count_nonzero(pole_var) > 0: 
+            pole_slip = True
+
         return pole_slip
 
     def get_initial_rotor_angles(self,result): 
@@ -600,22 +590,15 @@ class PFactoryGrid(object):
         '''
         var = 'firel'
         machines = self.app.GetCalcRelevantObjects("*.ElmSym")
-
         result = result[~result.index.duplicated()]
         initial_ang = []
-        for m in machines:          
+        for m in machines:  
             if self.check_if_in_service(m.loc_name):
                 pole_slip = result.loc[0,(m.loc_name,'outofstep')]#always float
-                #print("Type of pole slip: ", type(pole_slip))
                 angle = result.loc[0,(m.loc_name,var)]#.values
-                #print(angle)
-                #print(type(angle))
                 if type(angle) != type(pole_slip): 
-                    #print("Before replace:", angle)
                     angle = angle.replace(',','.')
-                    #print("After replace:", angle)
                     angle = float(angle) 
-                    #print("Type after change: ", type(angle))
                 initial_ang.append(angle)
             else: 
                 initial_ang.append(0)
@@ -635,7 +618,7 @@ class PFactoryGrid(object):
             if self.check_if_in_service(machine):
                 time, freq = self.get_dynamic_results(machine+".ElmSym",var[0]) 
                 freq_all.append(freq)
-        return freq_all
+        return np.transpose(freq_all)
 
     def get_rotor_angles(self,machine): 
         ''' Function to get rotor angles 
