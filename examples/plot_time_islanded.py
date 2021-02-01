@@ -1,7 +1,6 @@
-#import matplotlib2tikz
-import tikzplotlib
+import matplotlib2tikz
 import matplotlib.pyplot as plt
-import numpy as np 
+import numpy as np
 
 powers = np.arange(0, 1.1, 0.1)
 H_constants = np.arange(0.3, 1.4, 0.3)
@@ -29,6 +28,6 @@ plt.legend()
 plt.grid(True)
 
 # matplotlib2tikz.save("../plots/time_islanded_template.tikz")
-np.savetxt("time_islanded.csv",
+np.savetxt("../plots/time_islanded.csv",
            data, delimiter=',')
 plt.show()

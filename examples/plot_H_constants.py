@@ -1,5 +1,4 @@
-#import matplotlib2tikz
-import tikzplotlib
+import matplotlib2tikz
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -18,5 +17,5 @@ for df in dfs:
 plt.legend()
 plt.grid(True)
 
-tikzplotlib.save("H_constants_new.tex")
+matplotlib2tikz.save("../plots/H_constants_new.tikz")
 plt.show()
