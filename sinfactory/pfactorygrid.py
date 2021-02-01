@@ -152,8 +152,8 @@ class PFactoryGrid(object):
 
         self.ComRes = self.app.GetFromStudyCase('ComRes')
         self.ComRes.head = []  # Header of the file
-        self.ComRes.col_Sep = ';'  # Column separator
-        self.ComRes.dec_Sep = ','  # Decimal separator
+        self.ComRes.col_Sep = ','  # Column separator
+        self.ComRes.dec_Sep = '.'  # Decimal separator
         self.ComRes.iopt_exp = 6  # Export type (csv)
         self.ComRes.iopt_csel = 1  # Export only user defined vars
         self.ComRes.ciopt_head = 1  # Use parameter names for variables
@@ -203,8 +203,10 @@ class PFactoryGrid(object):
             variables = self.variables
         self.write_results_to_file(variables, filepath)
 
-        res = pd.read_csv(filepath, sep=';', decimal=',', header=[0, 1],
+        res = pd.read_csv(filepath, sep=',', decimal='.', header=[0, 1],
                           index_col=0)
+        #res.dropna(how='any')
+        res = res.apply(pd.to_numeric, errors='coerce').astype(float)
         res.rename({i: i.split(':')[1].split(' in ')[0]
                     for i in res.columns.levels[1]}, axis=1, level=1,
                    inplace=True)
@@ -284,6 +286,13 @@ class PFactoryGrid(object):
         # Get the event folder
         evt_folder = self.app.GetFromStudyCase("IntEvt")
 
+        # Get event name of events in folder
+        events = [i.loc_name for i in evt_folder.GetContents("*.EvtShc")]
+
+        # Delete existing events with the same name
+        if name in events:
+            self.delete_short_circuit(name)
+
         # Create an empty short circuit event
         evt_folder.CreateObject("EvtShc", name)
 
@@ -328,6 +337,13 @@ class PFactoryGrid(object):
         # Get the event folder
         evt_folder = self.app.GetFromStudyCase("IntEvt")
 
+        # Get event name of events in folder
+        events = [i.loc_name for i in evt_folder.GetContents("*.EvtSwitch")]
+
+        # Delete existing events with the same name
+        if name in events:
+            self.delete_switch_event(name)
+
         # Create an empty switch event
         evt_folder.CreateObject("EvtSwitch", name)
 
@@ -342,10 +358,10 @@ class PFactoryGrid(object):
         """Trips a line at both ends"""
         i = 0
         for switch in self.lines[target_name].switches:
-            self.create_switch_event("", time, "trip-"+target_name+str(i), 
+            self.create_switch_event("", time, "trip-"+target_name+str(i),
                                      switch)
             i += 1
-    
+
     def delete_trip_line_event(self, target_name):
         """Trips a line at both ends"""
         for i in ["0", "1"]:
@@ -367,6 +383,12 @@ class PFactoryGrid(object):
             sw[0].Delete()
         if sww:
             sww[0].Delete()
+
+    def get_events(self):
+        """ Return a list of events """
+        evt_folder = self.app.GetFromStudyCase("IntEvt")
+        events = [i.loc_name for i in evt_folder.GetContents()]
+        return events
 
     def change_generator_inertia_constant(self, name, value):
         """Change the inertia constant of a generator.
@@ -532,19 +554,26 @@ class PFactoryGrid(object):
         gen_var = ['c:avgCosts', 'c:Pdisp', 'c:cst_disp']
         for gen in gens:
             gen_name = gen.GetFullName().split('\\')[-1].split('.')[0]
-            opf_res[gen_name] = {i.split(':')[-1]:
+            opf_res[gen_name] = {i.split(':')[1]:
                                  gen.GetAttribute(i) for i in gen_var}
 
-        # loads = self.app.GetCalcRelevantObjects('*.ElmLod')
-        # load_var = ['c:Pdisp']
-        # for load in loads:
-        #     load_name = load.GetFullName().split('\\')[-1].split('.')[0]
-        #     opf_res[load_name] = {i.split(':')[-1]:
-        #                           load.GetAttribute(i) for i in load_var}
+        loads = self.app.GetCalcRelevantObjects('*.ElmLod')
+        load_var = ["m:P:bus1", "c:Pmism"]
+        for load in loads:
+            load_name = load.GetFullName().split('\\')[-1].split('.')[0]
+            opf_res[load_name] = {i.split(':')[1]:
+                                  load.GetAttribute(i) for i in load_var}
+
+        lines = self.app.GetCalcRelevantObjects('*.ElmLne')
+        line_var = ["m:P:bus1", "c:loading"]
+        for line in lines:
+            line_name = line.GetFullName().split('\\')[-1].split('.')[0]
+            opf_res[line_name] = {i.split(':')[1]:
+                                  line.GetAttribute(i) for i in line_var}
 
         grid = self.app.GetCalcRelevantObjects('*.ElmNet')[0]
         sys_var = ['c:cst_disp', 'c:LossP', 'c:LossQ', 'c:GenP', 'c:GenQ']
-        opf_res['system'] = {i.split(':')[-1]:
+        opf_res['system'] = {i.split(':')[1]:
                              grid.GetAttribute(i) for i in sys_var}
         opf_res = pd.DataFrame(opf_res).unstack().dropna()
 
