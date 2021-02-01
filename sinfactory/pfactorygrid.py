@@ -73,7 +73,10 @@ class PFactoryGrid(object):
 
         Returns:
             True if all initial conditions are verified. False otherwise.
-        '''
+
+        """
+        self.variables = variables
+        
         # Get result file.
         self.res = self.app.GetFromStudyCase('*.ElmRes')
         # Select result variable to monitor.
@@ -149,11 +152,11 @@ class PFactoryGrid(object):
 
         return time, values
     
-    def write_results_to_file(self, outputs, filepath):
+    def write_results_to_file(self, variables, filepath):
         ''' Writes results to csv-file.
 
         Args:
-            outputs  (dict):    maps pf-object to list of variables.
+            variables  (dict):     maps pf-object to list of variables.
             filepath (string):  filename for the temporary csv-file
         '''
 
@@ -173,7 +176,7 @@ class PFactoryGrid(object):
         cvariable = ['b:tnow']
         self.ComRes.head = []
         # Defining all other results
-        for elm_name, var_names in outputs.items():
+        for elm_name, var_names in variables.items():
             for element in self.app.GetCalcRelevantObjects(elm_name):
                 full_name = element.GetFullName()
                 split_name = full_name.split('\\')
@@ -196,24 +199,27 @@ class PFactoryGrid(object):
 
         self.ComRes.ExportFullRange()
 
-    def get_results(self, outputs, filepath='results.csv'):
+    def get_results(self, variables=None, filepath='results.csv'):
         ''' Writes simulation results to csv-file and re-import to dataframe.
 
         Args:
-            outputs  (dict):     maps pf-object to list of variables.
+            variables  (dict):     maps pf-object to list of variables.
             filepath (string):  filename for the temporary csv-file
 
         Returns:
             dataframe: two-level dataframe with simulation results
             '''
-
-        self.write_results_to_file(outputs, filepath)
+        if not variables and hasattr(self, 'variables'):
+            variables = self.variables
+        self.write_results_to_file(variables, filepath)
 
         res = pd.read_csv(filepath, sep=';', decimal=',', header=[0, 1],
                           index_col=0)
         res.rename({i: i.split(':')[1].split(' in ')[0]
                     for i in res.columns.levels[1]}, axis=1, level=1,
                    inplace=True)
+        res.columns.rename(('unit', 'variable'), level=[0, 1], inplace=True)
+        res.index.name = 'time'
 
         return res 
 
@@ -333,11 +339,12 @@ class PFactoryGrid(object):
         '''
         # Collect all generator elements
         gens = self.app.GetCalcRelevantObjects("*.ElmSym")
+        gnum = gens[0].ngnum  # number of paralell generators
         # Set active and reactive power values
         for gen in gens:
             if gen.loc_name in p_gen:
-                gen.pgini = p_gen[gen.loc_name]
-                gen.qgini = q_gen[gen.loc_name]
+                gen.pgini = p_gen[gen.loc_name]/gnum
+                gen.qgini = q_gen[gen.loc_name]/gnum
 
     def get_machine_gen(self, machine_name): 
         ''' Get active power generation from a specific machine 
@@ -778,3 +785,142 @@ class PFactoryGrid(object):
         self.ldf.iPbalancing = slack
 
         return self.ldf.Execute()
+
+    def set_element_OPF_attr(self, attr, element_type,
+                             relative_attr={'Pmin_uc': 'P_max',
+                                            'Pmax_uc': 'P_max'}):
+        """ Set attributes of element in optimal power flow
+        Args:
+            attribute (str)
+            element_type (str) e.g. *.ElmSym for all generators
+        """
+        for elm in self.app.GetCalcRelevantObjects(element_type):
+            for k, v in attr.items():
+                if k in relative_attr.keys():
+                    base_val = getattr(elm, relative_attr[k])
+                    v_mod = np.array(v)*base_val
+                    setattr(elm, k, v_mod.tolist())
+                else:
+                    setattr(elm, k, v)
+
+    def set_generator_OPF_cost(self, cost_dict):
+        """ Set generator cost attributes for optimal power flow
+        Args:
+            cost_segments: double dict
+                key 1:  generator names,
+                dict 2: ccost: list of segment cost_data
+                        cpower: list of segment power
+                        iInterPol: int
+                           0: spline
+                           1: piecewiselinear
+                           2: polynomial
+                           3: hermine
+                        penaltyCost: float
+                        fixedCost: float
+        """
+        for cf, cost_data in cost_dict.items():
+
+            if len(cost_data['ccost']) != len(cost_data['cpower']):
+                print("Number of segments for cost and power is not equal!")
+
+            gen_set = cost_data['generators']
+
+            for gen_name in gen_set:
+                relative_attr = ['ccost', 'cpower']
+                gen = self.app.GetCalcRelevantObjects(gen_name + '.ElmSym')[0]
+                for k, v in cost_data.items():
+                    if k == 'generators':
+                        continue
+                    if k in relative_attr:
+                        v_mod = np.array(v)*gen.P_max
+                        setattr(gen, k, v_mod.tolist())
+                        continue
+                    setattr(gen, k, v)
+
+    def run_OPF(self, power_flow=0, obj_function='cst', **kwargs):
+        """Method for running optimal power flow
+
+        Args:
+            power_flow:
+                0: AC optimization (interior point method)
+                1: DC optimization (linear programming (LP))
+                2: Contingency constrained DC optimization (LP))
+            obj_function:
+                los: Minimization of losses (total)
+                slo: Minimization of losses (selection)
+                cst: Minimization of cost
+                shd: Minimization of load shedding
+                rpr: Maximization of reactive power reserve
+                dev: Minimization of control variable deviations
+        Kwargs:
+            Controls (boolean):
+                iopt_pd:  Generator active power dispatch
+                iopt_qd: Generator/SVS reactive power dispatch
+                iopt_trf: Transformer tap positions
+                iopt_sht: Switchable shunts
+                iopt_genP: Active power limits of generators
+                iopt_genQ: Reactive power limits of generators/SVS
+                iopt_brnch: Branch flow limits (max. loading)
+                iopt_bus: Voltage limits of busbars/terminals
+                iopt_add: Boundary flow limits
+            Soft constraints (boolean):
+                penaltySoftConstr: Penalty factor for soft constraints (float)
+                isForceSoftPLims: Enforce soft active power limits of
+                                    generators
+                isForceSoftQLims: Enforce soft reactive power limits of
+                                    generators/SVS
+                isForceSoftLoadingLims: Enforce soft branch flow limits
+                                        (max. loading)
+                isForceSoftVoltageLims: Enforce soft voltage limits of
+                                        busbars/terminal
+        """
+
+        if not hasattr(self, 'opf'):
+            self.opf = self.app.GetFromStudyCase('ComOpf')
+
+        self.opf.ipopt_ACDC = power_flow
+        self.opf.iopt_obj = obj_function
+
+        for k, v in kwargs:
+            setattr(self.opf, k, v)
+
+        return self.opf.Execute()
+
+    def get_OPF_results(self):
+
+        opf_res = {}
+
+        gens = self.app.GetCalcRelevantObjects('*.ElmSym')
+        gen_var = ['c:avgCosts', 'c:Pdisp', 'c:cst_disp']
+        for gen in gens:
+            gen_name = gen.GetFullName().split('\\')[-1].split('.')[0]
+            opf_res[gen_name] = {i.split(':')[-1]:
+                                 gen.GetAttribute(i) for i in gen_var}
+
+        # loads = self.app.GetCalcRelevantObjects('*.ElmLod')
+        # load_var = ['c:Pdisp']
+        # for load in loads:
+        #     load_name = load.GetFullName().split('\\')[-1].split('.')[0]
+        #     opf_res[load_name] = {i.split(':')[-1]:
+        #                           load.GetAttribute(i) for i in load_var}
+
+        grid = self.app.GetCalcRelevantObjects('*.ElmNet')[0]
+        sys_var = ['c:cst_disp', 'c:LossP', 'c:LossQ', 'c:GenP', 'c:GenQ']
+        opf_res['system'] = {i.split(':')[-1]:
+                             grid.GetAttribute(i) for i in sys_var}
+        opf_res = pd.DataFrame(opf_res).unstack().dropna()
+
+        return opf_res
+
+    def get_inter_area_flow(self, area1, area2):
+        """Returns the flow between two area
+
+        Args:
+            area1: Name of the first area.
+            area2: Name of the second area.
+        """
+        obj1 = self.app.GetCalcRelevantObjects(area1+".ElmArea")[0]
+        obj2 = self.app.GetCalcRelevantObjects(area2+".ElmArea")[0]
+
+        obj1.CalculateInterchangeTo(obj2)
+        return obj1.GetAttribute("c:Pinter")
