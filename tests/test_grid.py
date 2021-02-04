@@ -182,6 +182,12 @@ def test_get_branch_flow(test_system):
 
     assert test_system.get_branch_flow("Line12") == pytest.approx(68.8534, abs=0.001)
 
+def test_get_all_line_flows(test_system): 
+    """Testing if getting the load factor of all branches is correct."""
+    test_system.run_load_flow() 
+    flows = test_system.get_all_line_flows() 
+    assert flows.loc["Line12", "Power flow"] == pytest.approx(68.8534, abs=0.001)
+
 def test_get_line_list(test_system): 
     """Test of getting a list of all lines."""
 

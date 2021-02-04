@@ -1,10 +1,6 @@
 
 
 import numpy as np
-import sys, os
-sys.path.append(os.path.abspath(os.path.join('..', 'sinfactory')))
-#print("System path:") 
-#print(sys.path)
 from sinfactory.pfactorygrid import PFactoryGrid as PFactoryGrid
 import matplotlib.pyplot as plt
 
@@ -27,14 +23,15 @@ var_names = ("n:fehz:bus1","n:u1:bus1","n:u1:bus1","m:P:bus1","n:Q:bus1",\
 output = test_obj.generate_variables(var_names)
 print(output["Synchronous Machine(1).ElmSym"][0])
 print(var_names[0])
-test_obj.power_flow_calc()
+test_obj.run_load_flow()
+print(test_obj.get_all_line_flows())
 
 plot = "active power"
 
 machine_names = test_obj.get_machines()
 for machine_name in machine_names: 
     test_obj.set_in_service(machine_name)
-print(test_obj.power_flow_calc() )
+print(test_obj.run_load_flow() )
 
 test_obj.prepare_dynamic_sim(variables = output, start_time = 0, end_time=10.0)
 test_obj.run_dynamic_sim()
