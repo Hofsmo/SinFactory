@@ -107,6 +107,15 @@ class PFactoryGrid(object):
 
         return self.inc.ZeroDerivative()
 
+    def initialize_dynamic_sim(self, var_names): 
+        """ Initialize dynamic simulation 
+
+        Args:
+            var_names: Variables to track. 
+        """
+        variables = self.generate_variables(var_names=var_names)
+        self.prepare_dynamic_sim(variables=variables)
+
     def run_dynamic_sim(self):
         """Run dynamic simulation.
 
