@@ -2,13 +2,8 @@
 
 import pytest
 import numpy as np 
-import sys, os
-sys.path.append(os.path.abspath(os.path.join('..', 'sinfactory')))
 from sinfactory.pfactorygrid import PFactoryGrid as PFactoryGrid
 
-# How to run tests in VSC: 
-# 1. Run this script 
-# 2. write in terminal: python -m pytest
 
 @pytest.fixture(scope="module")
 def test_system():
