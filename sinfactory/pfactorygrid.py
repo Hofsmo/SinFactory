@@ -248,10 +248,15 @@ class PFactoryGrid(object):
         """
         machines = self.get_machines()
         output = {}
-        for m in machines:          
+        for machine in machines:          
             if self.check_if_in_service(m):
                 #machine_list.append(m)
-                output[m+".ElmSym"] = list(var_names)
+                output[machine+".ElmSym"] = list(var_names)
+        loads = self.get_list_of_loads()
+        output = {}
+        for load in loads:          
+            #machine_list.append(m)
+            output[load+".ElmLod"] = list(var_names)
         return output
 
     def get_total_load(self):   
@@ -638,10 +643,16 @@ class PFactoryGrid(object):
     def get_rotor_angles(self,machine): 
         """ Function to get rotor angles 
         """
-        # Get machine element (return list with one element)
         var = ["s:firel"]
         time, rotor = self.get_dynamic_results(machine+".ElmSym",var[0])
         return time, rotor
+    
+    def get_voltage_magnitude(self,machine): 
+        """ Function to get voltage magnitude  
+        """
+        var = ["n:u1:bus1"]
+        time, volt = self.get_dynamic_results(machine+".ElmSym",var[0])
+        return volt
                 
     def get_machines_inertia_list(self):
         """
@@ -797,26 +808,6 @@ class PFactoryGrid(object):
         evt_folder = self.app.GetFromStudyCase("IntEvt")
         events = [i.loc_name for i in evt_folder.GetContents()]
         return events
-
-    def change_generator_inertia_constant(self, name, value):
-        """Change the inertia constant of a generator.
-
-        Args:
-            name: Name of the generator.
-            value: The inertia constant value.
-        """
-        elms = self.app.GetCalcRelevantObjects(name)
-        elms[0].h = value
-
-    def change_grid_min_short_circuit_power(self, name, value):
-        """Change the minimum short circuit power of an external grid.
-
-        Args:
-            name: Name of the external grid.
-            value: The minimum short circuit power value.
-        """
-        elms = self.app.GetCalcRelevantObjects(name)
-        elms[0].snssmin = value
 
     def get_output_window_content(self):
         """Returns the messages from the power factory output window."""
