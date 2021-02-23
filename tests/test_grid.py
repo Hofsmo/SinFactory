@@ -159,6 +159,27 @@ def test_get_area_load(test_system):
     assert test_system.get_area_load(2) == pytest.approx(20.0)
 
 
+def test_check_islands(test_system):
+    """ Check if the isalnds can be detected correctly. """
+    test_system.initialize_dynamic_sim()
+    test_system.run_dynamic_sim()    
+    output = test_system.generate_variables()
+    result = test_system.get_results(output)
+
+    assert test_system.check_islands(result) == 2
+
+
+def test_get_island_elements(test_system): 
+    """ Check if the buses are correctly allocated to the islands. """ 
+    test_system.initialize_dynamic_sim()
+    test_system.run_dynamic_sim()    
+    output = test_system.generate_variables()
+    result = test_system.get_results(output)
+    islands = test_system.check_islands(result) 
+    island_list = test_system.get_island_elements(islands, result)
+
+    assert island_list[0][0] == 'bus1'
+
 def test_set_out_of_service(test_system):
     """Test if machines can be set out of service."""
     test_system.set_out_of_service("SM1")
@@ -187,6 +208,11 @@ def test_change_grid_min_short_circuit_power(test_system):
     """."""
 
     raise NotImplementedError
+
+
+def test_get_list_of_buses(test_system):
+    """ Check if a list of all buses is correct. """
+    assert test_system.get_list_of_buses()[0] == "bus1"
 
 
 def test_get_list_of_loads(test_system):
@@ -224,7 +250,7 @@ def test_is_ref(test_system):
 def test_pole_slip(test_system):
     """Test if registration of pole slip is correct."""
     var_names = ("s:firel", "s:outofstep")
-    output = test_system.generate_variables(var_names)
+    output = test_system.generate_variables(var_machines=var_names)
     result = test_system.get_results(output)
 
     assert test_system.pole_slip("SM1", result) == False

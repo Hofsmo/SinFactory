@@ -128,6 +128,7 @@ class PFactoryGrid(object):
         var_machines=("m:u:bus1", "m:P:bus1"),
         var_loads=("m:u:bus1", "m:P:bus1"),
         var_lines=("m:u:bus1"),
+        var_buses=("m:u", "b:ipat")
     ):
         """ Initialize dynamic simulation 
 
@@ -135,7 +136,10 @@ class PFactoryGrid(object):
             var_names: Variables to track. 
         """
         variables = self.generate_variables(
-            var_machines=var_machines, var_loads=var_loads, var_lines=var_lines
+            var_machines=var_machines,
+            var_loads=var_loads,
+            var_lines=var_lines,
+            var_buses=var_buses
         )
         self.prepare_dynamic_sim(variables=variables)
 
@@ -263,6 +267,7 @@ class PFactoryGrid(object):
         var_machines=("m:u:bus1", "m:P:bus1"),
         var_loads=("m:u:bus1", "m:P:bus1"),
         var_lines=("m:u:bus1"),
+        var_buses=("m:u", "b:ipat"),
     ):
         """ Generate dictionary with variables for all machines
 
@@ -275,16 +280,16 @@ class PFactoryGrid(object):
         output = {}
         for machine in machines:
             if self.check_if_in_service(machine):
-                # machine_list.append(m)
                 output[machine + ".ElmSym"] = list(var_machines)
         loads = self.get_list_of_loads()
         for load in loads:
-            # machine_list.append(m)
             output[load + ".ElmLod"] = list(var_loads)
         lines = self.get_line_list()
         for line in lines:
-            # machine_list.append(m)
             output[line + ".ElmLne"] = list(var_lines)
+        buses = self.get_list_of_buses()
+        for bus in buses:
+            output[bus + ".ElmTerm"] = list(var_buses)
         return output
 
     def get_total_load(self):
@@ -515,8 +520,45 @@ class PFactoryGrid(object):
                 load_tot_area += load.plini
         return load_tot_area
 
+    def check_islands(self, result):
+        """ Check existence of islands. 
+
+        Returns
+            true if there is islands and false if not
+        """
+        var = "ipat"
+        buses = self.get_list_of_buses()
+        island_var = []
+        for bus in buses:
+            isolated_area_result = result.loc[1:1000, (bus, var)].values
+            end_val = len(isolated_area_result)-1
+            island_var.append(isolated_area_result[end_val]) 
+        return max(island_var)
+
+    def get_island_elements(self, islands, result): 
+        """ Return list of elemnts of the islands. 
+
+        Args: 
+            islands: number of islands 
+        Returns
+            2-D array where each island corresponds to a row which contains its elements
+        """
+        var = "ipat"
+        elements = self.get_list_of_buses()
+        element_list = [] 
+        counter = 0
+        while islands-counter > 0: 
+            element_list.append([])
+            counter += 1
+        for element in elements:
+            isolated_area_result = result.loc[1:1000, (element, var)].values
+            end_val = len(isolated_area_result)-1
+            element_list[int(isolated_area_result[end_val])-1].append(element)
+        return element_list
+
     def set_out_of_service(self, elm_name):
-        """Take an element out of service or reduce number of parallell machines by one 
+        """Take an element out of service or 
+        reduce number of parallell machines by one 
 
         Args:
             elm_name: Name of elements to take out of service.
@@ -557,6 +599,18 @@ class PFactoryGrid(object):
         """
         elms = self.app.GetCalcRelevantObjects(name)
         elms[0].snssmin = value
+
+    def get_list_of_buses(self):
+        """ Function that gets a list of all buses
+
+        Returns: 
+            List of every bus name 
+        """
+        buses = self.app.GetCalcRelevantObjects("*.ElmTerm")
+        bus_list = []
+        for bus in buses:
+            bus_list.append(bus.loc_name)
+        return bus_list
 
     def get_list_of_loads(self):
         """ Function for getting a list of all load names
@@ -687,17 +741,21 @@ class PFactoryGrid(object):
             element: to get voltage at (load, machine, etc)
             element_type: type of element, generator, load etc
         """
-        var = ["n:u1:bus1"]
         if element_type == "generator":
             object_name = element + ".ElmSym"
+            var = ["n:u1:bus1"]
         elif element_type == "load":
             object_name = element + ".ElmLod"
+            var = ["m:u:bus1"]
         elif element_type == "line":
             object_name = element + ".ElmLine"
+            var = ["m:u:bus1"]
         elif element_type == "terminal":
             object_name = element + ".ElmTerm"
+            var = ["m:u:bus1"]
         else:
             object_name = element + ".ElmSym"
+            var = ["n:u1:bus1"]
         time, volt = self.get_dynamic_results(object_name, var[0])
         return volt
 
