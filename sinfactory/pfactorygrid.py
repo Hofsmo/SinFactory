@@ -128,7 +128,7 @@ class PFactoryGrid(object):
         var_machines=("m:u:bus1", "m:P:bus1"),
         var_loads=("m:u:bus1", "m:P:bus1"),
         var_lines=("m:u:bus1"),
-        var_buses=("m:u", "b:ipat")
+        var_buses=("m:u", "b:ipat"),
     ):
         """ Initialize dynamic simulation 
 
@@ -139,7 +139,7 @@ class PFactoryGrid(object):
             var_machines=var_machines,
             var_loads=var_loads,
             var_lines=var_lines,
-            var_buses=var_buses
+            var_buses=var_buses,
         )
         self.prepare_dynamic_sim(variables=variables)
 
@@ -531,11 +531,11 @@ class PFactoryGrid(object):
         island_var = []
         for bus in buses:
             isolated_area_result = result.loc[1:1000, (bus, var)].values
-            end_val = len(isolated_area_result)-1
-            island_var.append(isolated_area_result[end_val]) 
+            end_val = len(isolated_area_result) - 1
+            island_var.append(isolated_area_result[end_val])
         return max(island_var)
 
-    def get_island_elements(self, islands, result): 
+    def get_island_elements(self, islands, result):
         """ Return list of elemnts of the islands. 
 
         Args: 
@@ -545,16 +545,30 @@ class PFactoryGrid(object):
         """
         var = "ipat"
         elements = self.get_list_of_buses()
-        element_list = [] 
+        element_list = []
         counter = 0
-        while islands-counter > 0: 
+        while islands - counter > 0:
             element_list.append([])
             counter += 1
         for element in elements:
             isolated_area_result = result.loc[1:1000, (element, var)].values
-            end_val = len(isolated_area_result)-1
-            element_list[int(isolated_area_result[end_val])-1].append(element)
+            end_val = len(isolated_area_result) - 1
+            element_list[int(isolated_area_result[end_val]) - 1].append(element)
         return element_list
+
+    def change_connected_loads(self, terminal, new_load):
+        """ Change connected loads to new_load
+
+        Args: 
+            terminal: change loads connect to this terminal 
+            new_load: new value of active power
+        """
+        terminal = self.app.GetCalcRelevantObjects(terminal + ".ElmTerm")[0]
+        cubicles = terminal.GetCalcRelevantCubicles()
+        for cubicle in cubicles:
+            print(cubicle.obj_id.loc_name)
+            if cubicle.obj_id.loc_name in self.get_list_of_loads():
+                self.change_bus_load(cubicle.obj_id.loc_name, new_load=new_load)
 
     def set_out_of_service(self, elm_name):
         """Take an element out of service or 

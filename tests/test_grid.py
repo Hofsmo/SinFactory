@@ -162,23 +162,33 @@ def test_get_area_load(test_system):
 def test_check_islands(test_system):
     """ Check if the isalnds can be detected correctly. """
     test_system.initialize_dynamic_sim()
-    test_system.run_dynamic_sim()    
+    test_system.run_dynamic_sim()
     output = test_system.generate_variables()
     result = test_system.get_results(output)
 
     assert test_system.check_islands(result) == 2
 
 
-def test_get_island_elements(test_system): 
-    """ Check if the buses are correctly allocated to the islands. """ 
+def test_get_island_elements(test_system):
+    """ Check if the buses are correctly allocated to the islands. """
     test_system.initialize_dynamic_sim()
-    test_system.run_dynamic_sim()    
+    test_system.run_dynamic_sim()
     output = test_system.generate_variables()
     result = test_system.get_results(output)
-    islands = test_system.check_islands(result) 
+    islands = test_system.check_islands(result)
     island_list = test_system.get_island_elements(islands, result)
 
-    assert island_list[0][0] == 'bus1'
+    assert island_list[0][0] == "bus1"
+
+
+def test_change_connected_loads(test_system):
+    """ Test if connected loads can be changed. """
+    init_load = sum(test_system.get_total_load())
+    test_system.change_connected_loads("bus2", 0)
+    final_load = sum(test_system.get_total_load())
+    test_system.change_connected_loads("bus2", 5)
+    assert init_load is not final_load
+
 
 def test_set_out_of_service(test_system):
     """Test if machines can be set out of service."""
