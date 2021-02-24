@@ -749,29 +749,16 @@ class PFactoryGrid(object):
         time, rotor = self.get_dynamic_results(machine + ".ElmSym", var[0])
         return time, rotor
 
-    def get_voltage_magnitude(self, element, element_type="generator"):
+    def get_voltage_magnitude(self, result, element):
         """ Function to get voltage magnitude  
         Args: 
+            result: Dataframe with result 
             element: to get voltage at (load, machine, etc)
             element_type: type of element, generator, load etc
         """
-        if element_type == "generator":
-            object_name = element + ".ElmSym"
-            var = ["n:u1:bus1"]
-        elif element_type == "load":
-            object_name = element + ".ElmLod"
-            var = ["m:u:bus1"]
-        elif element_type == "line":
-            object_name = element + ".ElmLine"
-            var = ["m:u:bus1"]
-        elif element_type == "terminal":
-            object_name = element + ".ElmTerm"
-            var = ["m:u:bus1"]
-        else:
-            object_name = element + ".ElmSym"
-            var = ["n:u1:bus1"]
-        time, volt = self.get_dynamic_results(object_name, var[0])
-        return volt
+        var = "u"
+        voltages = result.loc[1:1000, (element, var)].values
+        return voltages
 
     def get_machines_inertia_list(self):
         """

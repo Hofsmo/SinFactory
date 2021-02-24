@@ -279,7 +279,9 @@ def test_get_initial_rotor_angles(test_system):
 
 def test_get_voltage_magnitude(test_system):
     """Test if the voltage maagnitudes can be loaded."""
-    voltage_magn = test_system.get_voltage_magnitude("SM1", element_type="generator")
+    output = test_system.generate_variables()
+    result = test_system.get_results(output)
+    voltage_magn = test_system.get_voltage_magnitude(result, "SM1")
     assert voltage_magn[10] == pytest.approx(1.0, abs=0.01)
 
 
