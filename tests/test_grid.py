@@ -24,7 +24,8 @@ def test_set_variables(test_system):
 def test_run_dynamic_simulation(test_system):
     """Check if a dynamic simulation can be run."""
     var_names = ("n:fehz:bus1", "m:P:bus1", "s:firel", "s:outofstep", "n:u1:bus1")
-    test_system.initialize_dynamic_sim(var_machines=var_names)
+    variables = test_system.generate_variables(var_machines=var_names)
+    test_system.prepare_dynamic_sim(variables=variables)
     test_system.run_dynamic_sim()
     _, f = test_system.get_dynamic_results("SM1.ElmSym", "n:fehz:bus1")
 
@@ -34,10 +35,9 @@ def test_run_dynamic_simulation(test_system):
 def test_get_results(test_system):
     """Check if the result file is on the correct output format. """
     var_names = ("n:fehz:bus1", "m:P:bus1", "s:firel", "s:outofstep", "n:u1:bus1")
-    output = test_system.generate_variables(var_machines=var_names)
-    result = test_system.get_results(output)
+    test_system.initialize_and_run_dynamic_sim(var_machines=var_names)
 
-    assert result.columns[0][0] == "SM1"
+    assert test_system.result.columns[0][0] == "SM1"
 
 
 def test_get_rating(test_system):
@@ -161,22 +161,16 @@ def test_get_area_load(test_system):
 
 def test_check_islands(test_system):
     """ Check if the isalnds can be detected correctly. """
-    test_system.initialize_dynamic_sim()
-    test_system.run_dynamic_sim()
-    output = test_system.generate_variables()
-    result = test_system.get_results(output)
+    test_system.initialize_and_run_dynamic_sim()
 
-    assert test_system.check_islands(result) == 2
+    assert test_system.check_islands() == 2
 
 
 def test_get_island_elements(test_system):
     """ Check if the buses are correctly allocated to the islands. """
-    test_system.initialize_dynamic_sim()
-    test_system.run_dynamic_sim()
-    output = test_system.generate_variables()
-    result = test_system.get_results(output)
-    islands = test_system.check_islands(result)
-    island_list = test_system.get_island_elements(islands, result)
+    test_system.initialize_and_run_dynamic_sim()
+    islands = test_system.check_islands()
+    island_list = test_system.get_island_elements(islands)
 
     assert island_list[0][0] == "bus1"
 
@@ -260,28 +254,23 @@ def test_is_ref(test_system):
 def test_pole_slip(test_system):
     """Test if registration of pole slip is correct."""
     var_names = ("s:firel", "s:outofstep")
-    output = test_system.generate_variables(var_machines=var_names)
-    result = test_system.get_results(output)
+    test_system.initialize_and_run_dynamic_sim(var_machines=var_names)
 
-    assert test_system.pole_slip("SM1", result) == False
+    assert test_system.pole_slip("SM1") == False
 
 
 def test_get_initial_rotor_angles(test_system):
     """Test if intial rotor angles are correct."""
     var_names = ("s:firel", "s:outofstep")
-    output = test_system.generate_variables(var_names)
-    result = test_system.get_results(output)
+    test_system.initialize_and_run_dynamic_sim(var_machines=var_names)
 
-    assert test_system.get_initial_rotor_angles(result)[0] == pytest.approx(
-        0.0, abs=0.05
-    )
+    assert test_system.get_initial_rotor_angles()[0] == pytest.approx(0.0, abs=0.05)
 
 
 def test_get_voltage_magnitude(test_system):
     """Test if the voltage maagnitudes can be loaded."""
-    output = test_system.generate_variables()
-    result = test_system.get_results(output)
-    voltage_magn = test_system.get_voltage_magnitude(result, "SM1")
+    test_system.initialize_and_run_dynamic_sim()
+    voltage_magn = test_system.get_voltage_magnitude("SM1")
     assert voltage_magn[10] == pytest.approx(1.0, abs=0.01)
 
 

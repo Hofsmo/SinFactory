@@ -123,14 +123,15 @@ class PFactoryGrid(object):
 
         return self.inc.ZeroDerivative()
 
-    def initialize_dynamic_sim(
+    def initialize_and_run_dynamic_sim(
         self,
         var_machines=("m:u:bus1", "m:P:bus1"),
         var_loads=("m:u:bus1", "m:P:bus1"),
         var_lines=("m:u:bus1"),
         var_buses=("m:u", "b:ipat"),
     ):
-        """ Initialize dynamic simulation 
+        """ Initialize and run dynamic simulation.
+            Saving result file as attribute. 
 
         Args:
             var_names: Variables to track. 
@@ -142,6 +143,8 @@ class PFactoryGrid(object):
             var_buses=var_buses,
         )
         self.prepare_dynamic_sim(variables=variables)
+        self.run_dynamic_sim()
+        self.result = self.get_results(variables=variables)
 
     def run_dynamic_sim(self):
         """Run dynamic simulation.
@@ -520,7 +523,7 @@ class PFactoryGrid(object):
                 load_tot_area += load.plini
         return load_tot_area
 
-    def check_islands(self, result):
+    def check_islands(self):
         """ Check existence of islands. 
 
         Returns
@@ -530,12 +533,12 @@ class PFactoryGrid(object):
         buses = self.get_list_of_buses()
         island_var = []
         for bus in buses:
-            isolated_area_result = result.loc[1:1000, (bus, var)].values
+            isolated_area_result = self.result.loc[1:1000, (bus, var)].values
             end_val = len(isolated_area_result) - 1
             island_var.append(isolated_area_result[end_val])
         return max(island_var)
 
-    def get_island_elements(self, islands, result):
+    def get_island_elements(self, islands):
         """ Return list of elemnts of the islands. 
 
         Args: 
@@ -551,7 +554,7 @@ class PFactoryGrid(object):
             element_list.append([])
             counter += 1
         for element in elements:
-            isolated_area_result = result.loc[1:1000, (element, var)].values
+            isolated_area_result = self.result.loc[1:1000, (element, var)].values
             end_val = len(isolated_area_result) - 1
             element_list[int(isolated_area_result[end_val]) - 1].append(element)
         return element_list
@@ -686,38 +689,38 @@ class PFactoryGrid(object):
         machine = self.app.GetCalcRelevantObjects(machine_name + ".ElmSym")[0]
         return machine.ip_ctrl
 
-    def pole_slip(self, machine_name, result):
+    def pole_slip(self, machine_name):
         """ Check if there has been a pole slip at any active machines 
 
         Args:   
             machine_name: name of machine
-            result: data frame containing simulation results
         Returns: 
             true if there has been a pole slip at machine
         """
         var = "outofstep"
-        pole_var = result.loc[:1000, (machine_name, var)].values
+        pole_var = self.result.loc[:1000, (machine_name, var)].values
         pole_slip = False
         if np.count_nonzero(pole_var) > 0:
             pole_slip = True
 
         return pole_slip
 
-    def get_initial_rotor_angles(self, result):
+    def get_initial_rotor_angles(self):
         """ Get relative rotor angles intially 
-        Args: 
-            result: data frame containing simulation results
+        
         Returns: 
             Initial relative rotor angles for all machines 
         """
         var = "firel"
         machines = self.app.GetCalcRelevantObjects("*.ElmSym")
-        result = result[~result.index.duplicated()]
+        result = self.result[~self.result.index.duplicated()]
         initial_ang = []
         for m in machines:
             if self.check_if_in_service(m.loc_name):
-                pole_slip = result.loc[0, (m.loc_name, "outofstep")]  # always float
-                angle = result.loc[0, (m.loc_name, var)]  # .values
+                pole_slip = self.result.loc[
+                    0, (m.loc_name, "outofstep")
+                ]  # always float
+                angle = self.result.loc[0, (m.loc_name, var)]  # .values
                 if type(angle) != type(pole_slip):
                     angle = angle.replace(",", ".")
                     angle = float(angle)
@@ -749,15 +752,13 @@ class PFactoryGrid(object):
         time, rotor = self.get_dynamic_results(machine + ".ElmSym", var[0])
         return time, rotor
 
-    def get_voltage_magnitude(self, result, element):
+    def get_voltage_magnitude(self, element):
         """ Function to get voltage magnitude  
         Args: 
-            result: Dataframe with result 
             element: to get voltage at (load, machine, etc)
-            element_type: type of element, generator, load etc
         """
         var = "u"
-        voltages = result.loc[1:1000, (element, var)].values
+        voltages = self.result.loc[:, (element, var)].values
         return voltages
 
     def get_machines_inertia_list(self):
