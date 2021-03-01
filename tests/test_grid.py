@@ -175,6 +175,18 @@ def test_get_island_elements(test_system):
     assert island_list[0][0] == "bus1"
 
 
+def test_loads_connected(test_system):
+    """ Test if connected loads can be found. """
+    buses = test_system.get_list_of_buses()
+    assert test_system.loads_connected(buses)[0] == "General Load(2)"
+    
+
+def test_machines_connected(test_system):
+    """ Test if connected machines can be found. """
+    buses = test_system.get_list_of_buses()
+    assert test_system.machines_connected(buses)[0] == "SM1"
+
+
 def test_change_connected_loads(test_system):
     """ Test if connected loads can be changed. """
     init_load = sum(test_system.get_total_load())

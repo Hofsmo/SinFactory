@@ -125,7 +125,7 @@ class PFactoryGrid(object):
 
     def initialize_and_run_dynamic_sim(
         self,
-        var_machines=("m:u:bus1", "m:P:bus1"),
+        var_machines=("m:u:bus1", "m:P:bus1", "s:outofstep", "s:firel"),
         var_loads=("m:u:bus1", "m:P:bus1"),
         var_lines=("m:u:bus1"),
         var_buses=("m:u", "b:ipat"),
@@ -267,7 +267,7 @@ class PFactoryGrid(object):
 
     def generate_variables(
         self,
-        var_machines=("m:u:bus1", "m:P:bus1"),
+        var_machines=("m:u:bus1", "m:P:bus1", "s:outofstep", "s:firel"),
         var_loads=("m:u:bus1", "m:P:bus1"),
         var_lines=("m:u:bus1"),
         var_buses=("m:u", "b:ipat"),
@@ -554,10 +554,85 @@ class PFactoryGrid(object):
             element_list.append([])
             counter += 1
         for element in elements:
-            isolated_area_result = self.result.loc[1:1000, (element, var)].values
+            isolated_area_result = self.result.loc[:, (element, var)].values
             end_val = len(isolated_area_result) - 1
             element_list[int(isolated_area_result[end_val]) - 1].append(element)
         return element_list
+    
+    def loads_connected(self, buses): 
+        """ Return all loads connected to the buses.
+
+            Args:   
+                buses: list of buses 
+            Returns:   
+                loads: list of loads 
+        """ 
+        loads = []
+        for bus in buses: 
+            bus_element = self.app.GetCalcRelevantObjects(bus+".ElmTerm")[0]
+            cubs = bus_element.GetConnectedCubicles() 
+            for cub in cubs: 
+                if cub.obj_id.loc_name in self.get_list_of_loads():
+                    loads.append(cub.obj_id.loc_name)
+        return loads 
+
+    def machines_connected(self, buses): 
+        """ Return all machines connected to the buses.
+
+            Args:   
+                buses: list of buses 
+            Returns:   
+                machines: list of machines 
+        """ 
+        machines = []
+        for bus in buses: 
+            bus_element = self.app.GetCalcRelevantObjects(bus+".ElmTerm")[0]
+            cubs = bus_element.GetConnectedCubicles() 
+            for cub in cubs: 
+                if cub.obj_id.loc_name in self.get_machines():
+                    machines.append(cub.obj_id.loc_name)
+        return machines 
+    
+    def get_init_value(self, feature_name, loads, machines): 
+        """ Generate and return intial value of a feature. 
+        
+            Args: 
+                feature_name: name of feature
+                loads: loads in an island
+                machines: machines in an island
+            Returns: 
+                value: value of selected feature
+        """ 
+        value = -1
+        if feature_name == "COI angle":
+            init_ang = self.get_initial_rotor_angles(machine_names=machines) 
+            num = 0 
+            denum = 0 
+            for i, m in enumerate(machines): 
+                num += self.get_inertia(m)*self.get_number_of_parallell(m)*init_ang[i]
+                denum += self.get_inertia(m)*self.get_number_of_parallell(m)
+            value = num/denum
+        elif feature_name == "Production":
+            value = 0 
+            for machine in machines: 
+                production = self.get_active_power(machine)
+                value += production[0]
+        elif feature_name == "Net flow":
+            print("Net flow: NotImplementedError")
+        elif feature_name == "Max flow":
+            print("Max flow: NotImplementedError")
+        elif feature_name == "Load":
+            value = 0 
+            for load in loads: 
+                consumption = self.get_active_power(load)
+                value += consumption[0]
+        elif feature_name == "Inertia":
+            value = 0 
+            for machine in machines: 
+                value += self.get_inertia(machine)*self.get_number_of_parallell(machine)
+        elif feature_name == "Clearing time":
+            print("Clearing time: NotImplementedError")
+        return value 
 
     def change_connected_loads(self, terminal, new_load):
         """ Change connected loads to new_load
@@ -698,21 +773,29 @@ class PFactoryGrid(object):
             true if there has been a pole slip at machine
         """
         var = "outofstep"
-        pole_var = self.result.loc[:1000, (machine_name, var)].values
+        pole_var = self.result.loc[:, (machine_name, var)].values
         pole_slip = False
         if np.count_nonzero(pole_var) > 0:
             pole_slip = True
 
         return pole_slip
 
-    def get_initial_rotor_angles(self):
+    def get_initial_rotor_angles(self, machine_names=None):
         """ Get relative rotor angles intially 
         
         Returns: 
             Initial relative rotor angles for all machines 
         """
         var = "firel"
-        machines = self.app.GetCalcRelevantObjects("*.ElmSym")
+        if machine_names == None: 
+            machines = self.app.GetCalcRelevantObjects("*.ElmSym")
+        else: 
+            machines = [] 
+            for machine_name in machine_names: 
+                machine_object = self.app.GetCalcRelevantObjects(
+                    machine_name+".ElmSym"
+                )
+                machines.append(machine_object[0])
         result = self.result[~self.result.index.duplicated()]
         initial_ang = []
         for m in machines:
@@ -760,6 +843,15 @@ class PFactoryGrid(object):
         var = "u"
         voltages = self.result.loc[:, (element, var)].values
         return voltages
+
+    def get_active_power(self, element):
+        """ Function to get voltage magnitude  
+        Args: 
+            element: to get voltage at (load, machine, etc)
+        """
+        var = "P"
+        power = self.result.loc[:, (element, var)].values
+        return power
 
     def get_machines_inertia_list(self):
         """
