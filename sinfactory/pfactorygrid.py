@@ -324,10 +324,11 @@ class PFactoryGrid(object):
         """ Get total active power generation on all buses 
         
         Returns: 
-            Array with total generation on each bus (length of vector is equal to bus numbers)
+            Array with total generation on each bus (length of vector is equal
+            to bus numbers)
         """
         # Get all generator elements
-        gens = self.app.GetCalcRelevantObjects("*.ElmSym")  # ElmSym data object
+        gens = self.app.GetCalcRelevantObjects("*.ElmSym")  # ElmSym data obj
         # Sum up generation values
         gen_tot = []
         gen_val = 0
@@ -405,13 +406,9 @@ class PFactoryGrid(object):
         # Set active and reactive power values
         for gen in gens:
             if gen.loc_name in p_gen:
-<<<<<<< HEAD
                 gen.pgini = p_gen[gen.loc_name]/gnum
                 if q_gen:
                     gen.qgini = q_gen[gen.loc_name]/gnum
-=======
-                gen.pgini = p_gen[gen.loc_name] / gnum
-                gen.qgini = q_gen[gen.loc_name] / gnum
 
     def get_machine_gen(self, machine_name):
         """ Get active power generation from a specific machine 
@@ -448,18 +445,6 @@ class PFactoryGrid(object):
         # Get machine element (return list with one element)
         generator = self.app.GetCalcRelevantObjects(machine + ".ElmSym")[0]
         generator.pgini = new_gen
-
-    def get_machines(self):
-        """ Function that gets a list of all machine names
-
-        Returns: 
-            List of every machine name 
-        """
-        machines = self.app.GetCalcRelevantObjects("*.ElmSym")
-        machine_name_list = []
-        for m in machines:
-            machine_name_list.append(m.loc_name)
-        return machine_name_list
 
     def check_if_in_service(self, machine):
         """ Check if machine is in service
@@ -652,7 +637,6 @@ class PFactoryGrid(object):
             print(cubicle.obj_id.loc_name)
             if cubicle.obj_id.loc_name in self.get_list_of_loads():
                 self.change_bus_load(cubicle.obj_id.loc_name, new_load=new_load)
->>>>>>> defc29ea7dd7685879f1af9108747bdde8e50325
 
     def set_out_of_service(self, elm_name):
         """Take an element out of service or 
@@ -721,6 +705,19 @@ class PFactoryGrid(object):
         for load in loads:
             load_list.append(load.loc_name)
         return load_list
+    
+    def get_list_of_machines(self):
+        """ Function that gets a list of all machine names
+
+        Returns: 
+            List of every machine name 
+        """
+        machines = self.app.GetCalcRelevantObjects("*.ElmSym")
+        machine_name_list = []
+        for m in machines:
+            machine_name_list.append(m.loc_name)
+        return machine_name_list
+
 
     def get_branch_flow(self, line_name):
         """ Function for getting the flow on a branch 
@@ -830,7 +827,8 @@ class PFactoryGrid(object):
         freq_all = []
         for machine in machines:
             if self.check_if_in_service(machine):
-                time, freq = self.get_dynamic_results(machine + ".ElmSym", var[0])
+                time, freq = self.get_dynamic_results(machine + ".ElmSym",
+                                                      var[0])
                 freq_all.append(freq)
         return np.transpose(freq_all)
 
@@ -872,7 +870,8 @@ class PFactoryGrid(object):
         machine_list = self.app.GetCalcRelevantObjects("*.ElmSym")
         machine_type = []
         machine_name = []
-        # Identify the machine type (GENSAL - salient pole, or GENROU - round pole)
+        # Identify the machine type
+        # (GENSAL - salient pole, or GENROU - round pole)
         for machine in machine_list:
             machine_type.append(machine.typ_id)
             machine_name.append(machine.loc_name)
