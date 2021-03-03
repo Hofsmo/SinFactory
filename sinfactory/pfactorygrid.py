@@ -230,7 +230,7 @@ class PFactoryGrid(object):
                 load.plini = p_load[load.loc_name]
                 load.qlini = q_load[load.loc_name]
 
-    def set_generator_powers(self, p_gen, q_gen):
+    def set_generator_powers(self, p_gen, q_gen=None):
         """Method for setting all generator_powers.
 
         Args:
@@ -246,7 +246,8 @@ class PFactoryGrid(object):
         for gen in gens:
             if gen.loc_name in p_gen:
                 gen.pgini = p_gen[gen.loc_name]/gnum
-                gen.qgini = q_gen[gen.loc_name]/gnum
+                if q_gen:
+                    gen.qgini = q_gen[gen.loc_name]/gnum
 
     def set_out_of_service(self, elm_name):
         """Take an element out of service.
