@@ -123,10 +123,10 @@ def test_change_machine_gen(test_system):
     assert new_tot_gen - old_tot_gen == 1
 
 
-def test_get_machines(test_system):
+def test_get_list_of_machines(test_system):
     """Test if the names of the machines can be returned."""
 
-    assert test_system.get_machines()[0] == "SM1"
+    assert test_system.get_list_of_machines()[0] == "SM1"
 
 
 def test_check_if_in_service(test_system):
@@ -198,14 +198,14 @@ def test_change_connected_loads(test_system):
 
 def test_set_out_of_service(test_system):
     """Test if machines can be set out of service."""
-    test_system.set_out_of_service("SM1")
+    test_system.set_out_of_service("SM1", "machine")
 
     assert test_system.check_if_in_service("SM1") == False
 
 
 def test_set_in_service(test_system):
     """Test if machines can be set in service."""
-    test_system.set_in_service("SM1")
+    test_system.set_in_service("SM1", "machine")
 
     assert test_system.check_if_in_service("SM1") == True
 
@@ -251,10 +251,10 @@ def test_get_all_line_flows(test_system):
     assert flows.loc["Line12", "Power flow"] == pytest.approx(68.8534, abs=0.001)
 
 
-def test_get_line_list(test_system):
+def test_get_list_of_lines(test_system):
     """Test of getting a list of all lines."""
 
-    assert test_system.get_line_list()[3] == "Line34"
+    assert test_system.get_list_of_lines()[3] == "Line34"
 
 
 def test_is_ref(test_system):

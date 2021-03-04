@@ -279,7 +279,7 @@ class PFactoryGrid(object):
         Returns: 
             Dictionary with all machines with all input variables 
         """
-        machines = self.get_machines()
+        machines = self.get_list_of_machines()
         output = {}
         for machine in machines:
             if self.check_if_in_service(machine):
@@ -287,7 +287,7 @@ class PFactoryGrid(object):
         loads = self.get_list_of_loads()
         for load in loads:
             output[load + ".ElmLod"] = list(var_loads)
-        lines = self.get_line_list()
+        lines = self.get_list_of_lines()
         for line in lines:
             output[line + ".ElmLne"] = list(var_lines)
         buses = self.get_list_of_buses()
@@ -444,7 +444,7 @@ class PFactoryGrid(object):
         generator = self.app.GetCalcRelevantObjects(machine + ".ElmSym")[0]
         generator.pgini = new_gen
 
-    def get_machines(self):
+    def get_list_of_machines(self):
         """ Function that gets a list of all machine names
 
         Returns: 
@@ -453,7 +453,8 @@ class PFactoryGrid(object):
         machines = self.app.GetCalcRelevantObjects("*.ElmSym")
         machine_name_list = []
         for m in machines:
-            machine_name_list.append(m.loc_name)
+            if m.outserv == False: 
+                machine_name_list.append(m.loc_name)
         return machine_name_list
 
     def check_if_in_service(self, machine):
@@ -589,7 +590,7 @@ class PFactoryGrid(object):
             bus_element = self.app.GetCalcRelevantObjects(bus+".ElmTerm")[0]
             cubs = bus_element.GetConnectedCubicles() 
             for cub in cubs: 
-                if cub.obj_id.loc_name in self.get_machines():
+                if cub.obj_id.loc_name in self.get_list_of_machines():
                     machines.append(cub.obj_id.loc_name)
         return machines 
     
@@ -648,27 +649,36 @@ class PFactoryGrid(object):
             if cubicle.obj_id.loc_name in self.get_list_of_loads():
                 self.change_bus_load(cubicle.obj_id.loc_name, new_load=new_load)
 
-    def set_out_of_service(self, elm_name):
+    def set_out_of_service(self, elm_name, elm_type):
         """Take an element out of service or 
         reduce number of parallell machines by one 
 
         Args:
             elm_name: Name of elements to take out of service.
+            elm_type: Type of element
         """
-        elm = self.app.GetCalcRelevantObjects(elm_name + ".ElmSym")[0]
-        par_num = self.get_number_of_parallell(elm_name)
+        if elm_type == "machine": 
+            elm = self.app.GetCalcRelevantObjects(elm_name + ".ElmSym")[0]
+            par_num = self.get_number_of_parallell(elm_name)
+        elif elm_type == "line": 
+            elm = self.app.GetCalcRelevantObjects(elm_name + ".ElmLne")[0]
+            par_num = 0
         if par_num > 1:
             self.set_number_of_parallell(elm_name, par_num - 1)
         else:
             elm.outserv = True
 
-    def set_in_service(self, elm_name):
+    def set_in_service(self, elm_name, elm_type):
         """Take an element back in service.
 
         Args:
             elm_name: Name of elements to take out of service.
+            elm_type: Type of element
         """
-        elm = self.app.GetCalcRelevantObjects(elm_name + ".ElmSym")[0]
+        if elm_type == "machine": 
+            elm = self.app.GetCalcRelevantObjects(elm_name + ".ElmSym")[0]
+        elif elm_type == "line": 
+            elm = self.app.GetCalcRelevantObjects(elm_name + ".ElmLne")[0]
         elm.outserv = False
 
     def change_generator_inertia_constant(self, name, value):
@@ -701,7 +711,8 @@ class PFactoryGrid(object):
         buses = self.app.GetCalcRelevantObjects("*.ElmTerm")
         bus_list = []
         for bus in buses:
-            bus_list.append(bus.loc_name)
+            if bus.outserv == False: 
+                bus_list.append(bus.loc_name)
         return bus_list
 
     def get_list_of_loads(self):
@@ -713,7 +724,8 @@ class PFactoryGrid(object):
         load_list = []
         loads = self.app.GetCalcRelevantObjects("*.ElmLod")
         for load in loads:
-            load_list.append(load.loc_name)
+            if load.outserv == False: 
+                load_list.append(load.loc_name)
         return load_list
 
     def get_branch_flow(self, line_name):
@@ -734,14 +746,14 @@ class PFactoryGrid(object):
         Returns: 
             list of all line flows  
         """
-        lines = self.get_line_list()
+        lines = self.get_list_of_lines()
         power_flows = []
         for line in lines:
             power_flows.append(self.get_branch_flow(line))
         output = pd.DataFrame(power_flows, columns=["Power flow"], index=lines)
         return output
 
-    def get_line_list(self):
+    def get_list_of_lines(self):
         """ Get list of line names
         
         Returns: 
@@ -750,7 +762,8 @@ class PFactoryGrid(object):
         lines = self.app.GetCalcRelevantObjects("*.ElmLne")
         line_names = []
         for line in lines:
-            line_names.append(line.loc_name)
+            if line.outserv == False: 
+                line_names.append(line.loc_name)
         return line_names
 
     def is_ref(self, machine_name):
@@ -819,7 +832,7 @@ class PFactoryGrid(object):
             frequency array for all machine for the whole time period 
         """
         # Get machine element (return list with one element)
-        machines = self.get_machines()
+        machines = self.get_list_of_machines()
         var = ["n:fehz:bus1"]
         freq_all = []
         for machine in machines:
