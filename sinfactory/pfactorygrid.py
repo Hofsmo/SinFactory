@@ -507,11 +507,21 @@ class PFactoryGrid(object):
         # Get all the ElmLod data objects
         loads = self.app.GetCalcRelevantObjects("*.ElmLod")
         load_tot_area = 0
-        # Iterate through machine elements to add up generation (area name in powerfactory  MUST be just a number)
+        # Iterate through machine elements to add up generation (area name in
+        # powerfactory  MUST be just a number)
         for load in loads:
             if int(load.cpArea.loc_name) == area_name:
                 load_tot_area += load.plini
         return load_tot_area
+
+    def get_area_buses(self, area):
+        """ Get all buses within an area.
+
+        Args:
+            area: The area to get the buses for
+        """
+        obj = self.app.GetCalcRelevantObjects(area + ".ElmArea")[0]
+        return obj.GetBuses()
 
     def check_islands(self):
         """ Check existence of islands. 
@@ -1192,4 +1202,7 @@ class PFactoryGrid(object):
         obj2 = self.app.GetCalcRelevantObjects(area2 + ".ElmArea")[0]
 
         obj1.CalculateInterchangeTo(obj2)
-        return obj1.GetAttribute("c:Pinter")
+        try:
+            return obj1.GetAttribute("c:Pinter")
+        except AttributeError:
+            return None
