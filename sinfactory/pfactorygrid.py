@@ -444,16 +444,21 @@ class PFactoryGrid(object):
         generator = self.app.GetCalcRelevantObjects(machine + ".ElmSym")[0]
         generator.pgini = new_gen
 
-    def get_list_of_machines(self):
+    def get_list_of_machines(self, w_oos=False):
         """ Function that gets a list of all machine names
 
+        Args: 
+            w_oos: if list shall be with machines out of service (w oos) 
         Returns: 
             List of every machine name 
         """
         machines = self.app.GetCalcRelevantObjects("*.ElmSym")
         machine_name_list = []
         for m in machines:
-            if m.outserv == False: 
+            if not w_oos:
+                if m.outserv == False: 
+                    machine_name_list.append(m.loc_name)
+            else: 
                 machine_name_list.append(m.loc_name)
         return machine_name_list
 
@@ -649,7 +654,7 @@ class PFactoryGrid(object):
             if cubicle.obj_id.loc_name in self.get_list_of_loads():
                 self.change_bus_load(cubicle.obj_id.loc_name, new_load=new_load)
 
-    def set_out_of_service(self, elm_name, elm_type):
+    def set_out_of_service(self, elm_name, elm_type = None):
         """Take an element out of service or 
         reduce number of parallell machines by one 
 
@@ -663,12 +668,15 @@ class PFactoryGrid(object):
         elif elm_type == "line": 
             elm = self.app.GetCalcRelevantObjects(elm_name + ".ElmLne")[0]
             par_num = 0
+        else: 
+            elm = self.app.GetCalcRelevantObjects(elm_name + ".*")[0]
+            par_num = 0
         if par_num > 1:
             self.set_number_of_parallell(elm_name, par_num - 1)
         else:
             elm.outserv = True
 
-    def set_in_service(self, elm_name, elm_type):
+    def set_in_service(self, elm_name, elm_type = None):
         """Take an element back in service.
 
         Args:
@@ -679,6 +687,8 @@ class PFactoryGrid(object):
             elm = self.app.GetCalcRelevantObjects(elm_name + ".ElmSym")[0]
         elif elm_type == "line": 
             elm = self.app.GetCalcRelevantObjects(elm_name + ".ElmLne")[0]
+        else: 
+            elm = self.app.GetCalcRelevantObjects(elm_name + ".*")[0]
         elm.outserv = False
 
     def change_generator_inertia_constant(self, name, value):
@@ -702,29 +712,39 @@ class PFactoryGrid(object):
         elms = self.app.GetCalcRelevantObjects(name)
         elms[0].snssmin = value
 
-    def get_list_of_buses(self):
+    def get_list_of_buses(self, w_oos=False):
         """ Function that gets a list of all buses
 
+        Args: 
+            w_oos: if list shall be with buses out of service (w oos) 
         Returns: 
             List of every bus name 
         """
         buses = self.app.GetCalcRelevantObjects("*.ElmTerm")
         bus_list = []
         for bus in buses:
-            if bus.outserv == False: 
+            if not w_oos:
+                if bus.outserv == False: 
+                    bus_list.append(bus.loc_name)
+            else:
                 bus_list.append(bus.loc_name)
         return bus_list
 
-    def get_list_of_loads(self):
+    def get_list_of_loads(self, w_oos=False):
         """ Function for getting a list of all load names
 
+        Args: 
+            w_oos: if list shall be with loads out of service (w oos) 
         Returns: 
             vector of load names
         """
         load_list = []
         loads = self.app.GetCalcRelevantObjects("*.ElmLod")
         for load in loads:
-            if load.outserv == False: 
+            if not w_oos:
+                if load.outserv == False: 
+                    load_list.append(load.loc_name)
+            else:
                 load_list.append(load.loc_name)
         return load_list
 
@@ -753,16 +773,21 @@ class PFactoryGrid(object):
         output = pd.DataFrame(power_flows, columns=["Power flow"], index=lines)
         return output
 
-    def get_list_of_lines(self):
+    def get_list_of_lines(self, w_oos=False):
         """ Get list of line names
-        
+
+        Args: 
+            w_oos: if list shall be with lines out of service (w oos)         
         Returns: 
             List of all line names 
         """
         lines = self.app.GetCalcRelevantObjects("*.ElmLne")
         line_names = []
         for line in lines:
-            if line.outserv == False: 
+            if not w_oos: 
+                if line.outserv == False: 
+                    line_names.append(line.loc_name)
+            else: 
                 line_names.append(line.loc_name)
         return line_names
 
