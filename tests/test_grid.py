@@ -15,7 +15,8 @@ def test_system():
 
 def test_set_variables(test_system):
     """ Check if the dictionary is correctly made."""
-    var_names = ("n:fehz:bus1", "m:P:bus1", "s:firel", "s:outofstep", "n:u1:bus1")
+    var_names = ("n:fehz:bus1", "m:P:bus1",
+                 "s:firel", "s:outofstep", "n:u1:bus1")
     output = test_system.generate_variables(var_machines=var_names)
 
     assert output["SM1.ElmSym"][0] == var_names[0]
@@ -23,7 +24,8 @@ def test_set_variables(test_system):
 
 def test_run_dynamic_simulation(test_system):
     """Check if a dynamic simulation can be run."""
-    var_names = ("n:fehz:bus1", "m:P:bus1", "s:firel", "s:outofstep", "n:u1:bus1")
+    var_names = ("n:fehz:bus1", "m:P:bus1",
+                 "s:firel", "s:outofstep", "n:u1:bus1")
     variables = test_system.generate_variables(var_machines=var_names)
     test_system.prepare_dynamic_sim(variables=variables)
     test_system.run_dynamic_sim()
@@ -220,11 +222,6 @@ def test_change_generator_inertia_constant(test_system):
     assert new_inertia - old_inertia > 0
 
 
-def test_change_grid_min_short_circuit_power(test_system):
-    """."""
-
-    raise NotImplementedError
-
 
 def test_get_list_of_buses(test_system):
     """ Check if a list of all buses is correct. """
@@ -405,12 +402,12 @@ def test_clear_output_window(test_system):
 def test_run_load_flow(test_system):
     """Test if running power flow calculation are correct. """
 
-    assert test_system.run_load_flow(0, 0, 0) is False
+    assert test_system.run_load_flow(0, 0, 0) == 0
 
 
 def test_get_area_buses(test_system):
     """Test if we can get the buses in the area correctly."""
 
-    assert ["bus1", "bus2"] == test_system.get_area_buses("A1")
+    assert ["bus1", "bus2"] == test_system.get_area_buses("1")
 
 

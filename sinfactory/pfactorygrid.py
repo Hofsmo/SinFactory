@@ -515,14 +515,6 @@ class PFactoryGrid(object):
                 load_tot_area += load.plini
         return load_tot_area
 
-    def get_area_buses(self, area):
-        """ Get all buses within an area.
-
-        Args:
-            area: The area to get the buses for
-        """
-        obj = self.app.GetCalcRelevantObjects(area + ".ElmArea")[0]
-        return obj.GetBuses()
 
     def check_islands(self):
         """ Check existence of islands. 
@@ -721,6 +713,28 @@ class PFactoryGrid(object):
         elms = self.app.GetCalcRelevantObjects(name)
         elms[0].snssmin = value
 
+    def get_list_general(self, elements, w_oos=False):
+        """Returns a list of elements of the type element.
+
+        There are several methods returning a list of elements. They all
+        need to do some operations to return the list correctly. This
+        method implements those operations.
+
+        Args:
+            elements: List of PowerFactory object containing elements.
+            w_oos: if list shall be with buses out of service (w oos) 
+        Returns:
+            list of elements.
+        """
+        element_list = []
+        for element in elements:
+            if w_oos:
+                if element.outserv == 0: 
+                    element_list.append(element.loc_name)
+            else:
+                element_list.append(element.loc_name)
+        return element_list
+
     def get_list_of_buses(self, w_oos=False):
         """ Function that gets a list of all buses
 
@@ -729,15 +743,10 @@ class PFactoryGrid(object):
         Returns: 
             List of every bus name 
         """
-        buses = self.app.GetCalcRelevantObjects("*.ElmTerm")
-        bus_list = []
-        for bus in buses:
-            if not w_oos:
-                if bus.outserv is False: 
-                    bus_list.append(bus.loc_name)
-            else:
-                bus_list.append(bus.loc_name)
-        return bus_list
+        
+        return self.get_list_general(
+            self.app.GetCalcRelevantObjects("*.ElmTerm"),
+            w_oos)
 
     def get_list_of_loads(self, w_oos=False):
         """ Function for getting a list of all load names
@@ -747,15 +756,9 @@ class PFactoryGrid(object):
         Returns: 
             vector of load names
         """
-        load_list = []
-        loads = self.app.GetCalcRelevantObjects("*.ElmLod")
-        for load in loads:
-            if not w_oos:
-                if load.outserv is False: 
-                    load_list.append(load.loc_name)
-            else:
-                load_list.append(load.loc_name)
-        return load_list
+        return self.get_list_general(
+            self.app.GetCalcRelevantObjects("*.ElmLod"),
+            w_oos)
     
     def get_list_of_machines(self, w_oos=False):
         """ Function that gets a list of all machine names
@@ -765,15 +768,18 @@ class PFactoryGrid(object):
         Returns: 
             List of every machine name 
         """
-        machines = self.app.GetCalcRelevantObjects("*.ElmSym")
-        machine_name_list = []
-        for m in machines:
-            if not w_oos:
-                if m.outserv is False: 
-                    machine_name_list.append(m.loc_name)
-            else: 
-                machine_name_list.append(m.loc_name)
-        return machine_name_list
+        return self.get_list_general(
+            self.app.GetCalcRelevantObjects("*.ElmSym"),
+            w_oos)
+    
+    def get_area_buses(self, area):
+        """ Get all buses within an area.
+
+        Args:
+            area: The area to get the buses for
+        """
+        obj = self.app.GetCalcRelevantObjects(area + ".ElmArea")[0]
+        return self.get_list_general(obj.GetBuses())
     
     def get_branch_flow(self, line_name):
         """ Function for getting the flow on a branch 
