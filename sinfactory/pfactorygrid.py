@@ -560,51 +560,52 @@ class PFactoryGrid(object):
             end_val = len(isolated_area_result) - 1
             element_list[int(isolated_area_result[end_val]) - 1].append(elm)
         return element_list
-    
-    def loads_connected(self, buses): 
+
+    def loads_connected(self, buses):
         """ Return all loads connected to the buses.
 
             Args:   
                 buses: list of buses 
             Returns:   
                 loads: list of loads 
-        """ 
+        """
         loads = []
-        for bus in buses: 
-            bus_element = self.app.GetCalcRelevantObjects(bus+".ElmTerm")[0]
-            cubs = bus_element.GetConnectedCubicles() 
-            for cub in cubs: 
+        for bus in buses:
+            bus_element = self.app.GetCalcRelevantObjects(bus + ".ElmTerm")[0]
+            cubs = bus_element.GetConnectedCubicles()
+            for cub in cubs:
                 if cub.obj_id.loc_name in self.get_list_of_loads():
                     loads.append(cub.obj_id.loc_name)
-        return loads 
+        return loads
 
-    def machines_connected(self, buses): 
+    def machines_connected(self, buses):
         """ Return all machines connected to the buses.
 
             Args:   
                 buses: list of buses 
             Returns:   
                 machines: list of machines 
-        """ 
+        """
         machines = []
-        for bus in buses: 
-            bus_element = self.app.GetCalcRelevantObjects(bus+".ElmTerm")[0]
-            cubs = bus_element.GetConnectedCubicles() 
-            for cub in cubs: 
+        for bus in buses:
+            bus_element = self.app.GetCalcRelevantObjects(bus + ".ElmTerm")[0]
+            cubs = bus_element.GetConnectedCubicles()
+            for cub in cubs:
                 if cub.obj_id.loc_name in self.get_list_of_machines():
                     machines.append(cub.obj_id.loc_name)
-        return machines 
-    
-    def get_init_value(self, feature_name, loads, machines): 
+        return machines
+
+    def get_init_value(self, feature_name, loads, machines, tripped_lines):
         """ Generate and return intial value of a feature. 
         
             Args: 
                 feature_name: name of feature
                 loads: loads in an island
                 machines: machines in an island
+                tripped_lines: tripped lines 
             Returns: 
                 value: value of selected feature
-        """ 
+        """
         value = -1
         if feature_name == "COI angle":
             init_ang = self.get_initial_rotor_angles(machine_names=machines) 
@@ -617,17 +618,25 @@ class PFactoryGrid(object):
                 denum += self.get_inertia(m)*self.get_number_of_parallell(m)
             value = num/denum
         elif feature_name == "Production":
-            value = 0 
-            for machine in machines: 
+            value = 0
+            for machine in machines:
                 production = self.get_active_power(machine)
                 value += production[0]
         elif feature_name == "Net flow":
-            print("Net flow: NotImplementedError")
+            net_flow = 0
+            for line in tripped_lines:
+                net_flow += self.get_branch_flow(line)
+            value = net_flow
         elif feature_name == "Max flow":
-            print("Max flow: NotImplementedError")
+            max_flow = 0
+            for line in tripped_lines:
+                flow = self.get_branch_flow(line)
+                if flow > max_flow:
+                    max_flow = flow
+            value = max_flow
         elif feature_name == "Load":
-            value = 0 
-            for load in loads: 
+            value = 0
+            for load in loads:
                 consumption = self.get_active_power(load)
                 value += consumption[0]
         elif feature_name == "Inertia":
@@ -637,7 +646,7 @@ class PFactoryGrid(object):
                           * self.get_number_of_parallell(machine))
         elif feature_name == "Clearing time":
             print("Clearing time: NotImplementedError")
-        return value 
+        return value
 
     def change_connected_loads(self, terminal, new_load):
         """ Change connected loads to new_load
@@ -662,13 +671,13 @@ class PFactoryGrid(object):
             elm_name: Name of elements to take out of service.
             elm_type: Type of element
         """
-        if elm_type == "machine": 
+        if elm_type == "machine":
             elm = self.app.GetCalcRelevantObjects(elm_name + ".ElmSym")[0]
             par_num = self.get_number_of_parallell(elm_name)
-        elif elm_type == "line": 
+        elif elm_type == "line":
             elm = self.app.GetCalcRelevantObjects(elm_name + ".ElmLne")[0]
             par_num = 0
-        else: 
+        else:
             elm = self.app.GetCalcRelevantObjects(elm_name + ".*")[0]
             par_num = 0
         if par_num > 1:
@@ -683,11 +692,11 @@ class PFactoryGrid(object):
             elm_name: Name of elements to take out of service.
             elm_type: Type of element
         """
-        if elm_type == "machine": 
+        if elm_type == "machine":
             elm = self.app.GetCalcRelevantObjects(elm_name + ".ElmSym")[0]
-        elif elm_type == "line": 
+        elif elm_type == "line":
             elm = self.app.GetCalcRelevantObjects(elm_name + ".ElmLne")[0]
-        else: 
+        else:
             elm = self.app.GetCalcRelevantObjects(elm_name + ".*")[0]
         elm.outserv = False
 
@@ -805,7 +814,7 @@ class PFactoryGrid(object):
             if not w_oos: 
                 if line.outserv is not False: 
                     line_names.append(line.loc_name)
-            else: 
+            else:
                 line_names.append(line.loc_name)
         return line_names
 
@@ -845,11 +854,11 @@ class PFactoryGrid(object):
         var = "firel"
         if machine_names is None: 
             machines = self.app.GetCalcRelevantObjects("*.ElmSym")
-        else: 
-            machines = [] 
-            for machine_name in machine_names: 
+        else:
+            machines = []
+            for machine_name in machine_names:
                 machine_object = self.app.GetCalcRelevantObjects(
-                    machine_name+".ElmSym"
+                    machine_name + ".ElmSym"
                 )
                 machines.append(machine_object[0])
         initial_ang = []
