@@ -408,6 +408,6 @@ def test_run_load_flow(test_system):
 def test_get_area_buses(test_system):
     """Test if we can get the buses in the area correctly."""
 
-    assert ["bus1", "bus2"] == test_system.get_area_buses("1")
+    assert ["bus1", "bus2"] == test_system.get_list_of_area_buses("1")
 
 

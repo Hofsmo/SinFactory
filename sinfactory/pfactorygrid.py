@@ -772,7 +772,19 @@ class PFactoryGrid(object):
             self.app.GetCalcRelevantObjects("*.ElmSym"),
             w_oos)
     
-    def get_area_buses(self, area):
+    def get_list_of_lines(self, w_oos=False):
+        """ Get list of line names
+
+        Args: 
+            w_oos: if list shall be with lines out of service (w oos)         
+        Returns: 
+            List of all line names 
+        """
+        return self.get_list_general(
+            self.app.GetCalcRelevantObjects("*.ElmLne"),
+            w_oos)
+    
+    def get_list_of_area_buses(self, area):
         """ Get all buses within an area.
 
         Args:
@@ -780,7 +792,7 @@ class PFactoryGrid(object):
         """
         obj = self.app.GetCalcRelevantObjects(area + ".ElmArea")[0]
         return self.get_list_general(obj.GetBuses())
-    
+
     def get_branch_flow(self, line_name):
         """ Function for getting the flow on a branch 
         
@@ -806,23 +818,6 @@ class PFactoryGrid(object):
         output = pd.DataFrame(power_flows, columns=["Power flow"], index=lines)
         return output
 
-    def get_list_of_lines(self, w_oos=False):
-        """ Get list of line names
-
-        Args: 
-            w_oos: if list shall be with lines out of service (w oos)         
-        Returns: 
-            List of all line names 
-        """
-        lines = self.app.GetCalcRelevantObjects("*.ElmLne")
-        line_names = []
-        for line in lines:
-            if not w_oos: 
-                if line.outserv is not False: 
-                    line_names.append(line.loc_name)
-            else:
-                line_names.append(line.loc_name)
-        return line_names
 
     def is_ref(self, machine_name):
         """ check if machine is the reference machine 
