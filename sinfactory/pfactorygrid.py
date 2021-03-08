@@ -611,9 +611,9 @@ class PFactoryGrid(object):
             num = 0 
             denum = 0 
             for i, m in enumerate(machines): 
-                num += self.get_inertia(m)
-                * self.get_number_of_parallell(m)
-                * init_ang[i]
+                num += (self.get_inertia(m)
+                        * self.get_number_of_parallell(m)
+                        * init_ang[i])
                 denum += self.get_inertia(m)*self.get_number_of_parallell(m)
             value = num/denum
         elif feature_name == "Production":
@@ -633,8 +633,8 @@ class PFactoryGrid(object):
         elif feature_name == "Inertia":
             value = 0 
             for machine in machines: 
-                value += self.get_inertia(machine)
-                * self.get_number_of_parallell(machine)
+                value += (self.get_inertia(machine)
+                          * self.get_number_of_parallell(machine))
         elif feature_name == "Clearing time":
             print("Clearing time: NotImplementedError")
         return value 
