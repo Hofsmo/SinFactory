@@ -179,7 +179,7 @@ def test_loads_connected(test_system):
     """ Test if connected loads can be found. """
     buses = test_system.get_list_of_buses()
     assert test_system.loads_connected(buses)[0] == "General Load(2)"
-    
+
 
 def test_machines_connected(test_system):
     """ Test if connected machines can be found. """
