@@ -411,3 +411,25 @@ def test_get_area_buses(test_system):
     assert ["bus1", "bus2"] == test_system.get_list_of_area_buses("1")
 
 
+def test_get_list_of_line_buses(test_system):
+    """Test if we can get the buses connected to a line"""
+
+    assert ["bus2", "bus1"] == test_system.get_list_of_line_buses("Line12")
+
+
+def test_get_lines_between_areas(test_system):
+    """Test if we can get the buses between two areas"""
+    assert ["Line14", "Line23"] == test_system.get_lines_between_areas("1",
+                                                                       "2")
+
+
+def test_get_list_of_areas(test_system):
+    """Test if we can get the areas in the system."""
+    assert ["1", "2"] == test_system.get_list_of_areas()
+
+
+def test_get_all_inter_area_lines(test_system):
+    """Test if we can get all inter area lines."""
+
+    assert {('1', '2'): ["Line14",
+                         "Line23"]} == test_system.get_all_inter_area_lines()

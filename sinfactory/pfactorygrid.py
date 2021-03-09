@@ -1,6 +1,7 @@
 """Module for interfacing with power factory."""
 
 import os
+import itertools
 import numpy as np
 import pandas as pd
 import powerfactory as pf
@@ -31,10 +32,6 @@ class PFactoryGrid(object):
 
         # Get the load flow object
         self.ldf = self.app.GetFromStudyCase("ComLdf")
-
-        self.lines = {}
-        for line in self.app.GetCalcRelevantObjects("*.ElmLne"):
-            self.lines[line.cDisplayName] = PowerFactoryLine(self.app, line)
 
         self.lines = {}
         for line in self.app.GetCalcRelevantObjects("*.ElmLne"):
@@ -299,7 +296,8 @@ class PFactoryGrid(object):
         """ Get total active load on all buses
 
         Returns: 
-            vector of total load at each bus (length of vector is equal to bus numbers)
+            vector of total load at each bus (length of vector is equal to bus
+            numbers)
          """
         # Collect all load elements
         loads = self.app.GetCalcRelevantObjects("*.ElmLod")
@@ -514,7 +512,6 @@ class PFactoryGrid(object):
             if int(load.cpArea.loc_name) == area_name:
                 load_tot_area += load.plini
         return load_tot_area
-
 
     def check_islands(self):
         """ Check existence of islands. 
@@ -735,6 +732,11 @@ class PFactoryGrid(object):
                 element_list.append(element.loc_name)
         return element_list
 
+    def get_list_of_areas(self):
+        """Returns a list of areas in the system."""
+        return self.get_list_general(
+            self.app.GetCalcRelevantObjects("*.ElmArea"))
+
     def get_list_of_buses(self, w_oos=False):
         """ Function that gets a list of all buses
 
@@ -793,6 +795,43 @@ class PFactoryGrid(object):
         obj = self.app.GetCalcRelevantObjects(area + ".ElmArea")[0]
         return self.get_list_general(obj.GetBuses())
 
+    def get_list_of_line_buses(self, line):
+        """ Get a list of buses connected to a line.
+
+        Args:
+            line: the line to get the buses for.
+        Returns
+            list of buses connected to a line
+        """
+        lne = self.app.GetCalcRelevantObjects(line + ".ElmLne")[0]
+        return [lne.bus1.cBusBar.cDisplayName,
+                lne.bus2.cBusBar.cDisplayName]
+
+    def get_lines_between_areas(self, area1, area2):
+        """Get all lines between two areas."""
+        iab = []
+        a1b = self.get_list_of_area_buses(area1)
+        a2b = self.get_list_of_area_buses(area2)
+
+        lines = self.get_list_of_lines()
+
+        for line in lines:
+            line_buses = self.get_list_of_line_buses(line)
+            if ((line_buses[0] in a1b and line_buses[1] in a2b) or
+                    (line_buses[1] in a1b and line_buses[0] in a2b)):
+                iab.append(line)
+
+        return iab
+
+    def get_all_inter_area_lines(self):
+        """Get all inter area lines in the system"""
+        tie_lines = {}
+        for areas in list(itertools.combinations(self.get_list_of_areas(), 2)):
+            lines = self.get_lines_between_areas(areas[0], areas[1])
+            if lines:
+                tie_lines[areas] = lines
+        return tie_lines
+
     def get_branch_flow(self, line_name):
         """ Function for getting the flow on a branch 
         
@@ -809,7 +848,7 @@ class PFactoryGrid(object):
         """ Function for getting all line flows 
         
         Returns: 
-            list of all line flows  
+            DataFrame containing all line flows
         """
         lines = self.get_list_of_lines()
         power_flows = []
@@ -817,7 +856,6 @@ class PFactoryGrid(object):
             power_flows.append(self.get_branch_flow(line))
         output = pd.DataFrame(power_flows, columns=["Power flow"], index=lines)
         return output
-
 
     def is_ref(self, machine_name):
         """ check if machine is the reference machine 
@@ -1251,7 +1289,7 @@ class PFactoryGrid(object):
         return opf_res
 
     def get_inter_area_flow(self, area1, area2):
-        """Returns the flow between two area
+        """Returns the flow between two areas
 
         Args:
             area1: Name of the first area.
@@ -1265,3 +1303,56 @@ class PFactoryGrid(object):
             return obj1.GetAttribute("c:Pinter")
         except AttributeError:
             return None
+
+    def caclulate_inter_area_isf(self, delta_p=5, balanced=0, power_control=0,
+                                 slack=0):
+        """Method that calculates the injection shift factors for tie lines
+
+        This method calculates the injection shift factors for tie lines
+        given all generators. These factors can be used for redispatching
+        generation to alleviate tie line overloads. The method can be
+        extended to also consider changes in loads. The resulting matrix is
+        an (m x n) matrix where m is the number of tie lines in the system
+        and n is the number of generators.
+        
+        Args:
+            delta_p: Amount of power to change on generator
+            balanced: 
+                0: Three phase balanced load flow.
+                1: Three phase unbalanced load flow.
+                2: DC load flow.
+            power_control:
+                0: As dispatched
+                1: According to secondary control
+                2: According to primary control
+                3: According to inertias
+            slack: This is only relevant if power_control is 0
+                0: By reference machine
+                1: By load at reference bus
+                2: By static generator at reference bus
+                3: By loads
+                4: By synchronous generators
+                5: By synchronous generators and static generators
+            """
+        gens = self.get_list_of_machines()
+        tie_lines = self.get_all_inter_area_lines()
+        lines = list(itertools.chain.from_iterable(tie_lines.values()))
+        isf = np.zeros((len(gens), len(lines)))
+        for idx, gen in enumerate(gens):
+            # Run load flow before changing the power
+            self.run_load_flow(balanced, power_control, slack)
+
+            # Get the load flow before changing power
+            y_0 = self.get_all_line_flows().loc[lines, "Power Flow"].to_numpy()
+
+            # Change flow and calculate ISF
+            p = self.get_machine_gen(gen)
+            self.change_machine_gen(gen, delta_p+p)
+            self.run_load_flow(balanced, power_control, slack)
+            y_1 = self.get_all_line_flows().loc[lines, "Power Flow"].to_numpy()
+            isf[idx, :] = (y_1-y_0)/delta_p
+
+            # Change the load back
+            self.change_machine_gen(gen, p)
+
+        return isf
