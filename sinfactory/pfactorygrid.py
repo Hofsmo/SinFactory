@@ -406,9 +406,9 @@ class PFactoryGrid(object):
         # Set active and reactive power values
         for gen in gens:
             if gen.loc_name in p_gen:
-                gen.pgini = p_gen[gen.loc_name]/gnum
+                gen.pgini = p_gen[gen.loc_name] / gnum
                 if q_gen:
-                    gen.qgini = q_gen[gen.loc_name]/gnum
+                    gen.qgini = q_gen[gen.loc_name] / gnum
 
     def get_machine_gen(self, machine_name):
         """ Get active power generation from a specific machine 
@@ -515,7 +515,6 @@ class PFactoryGrid(object):
                 load_tot_area += load.plini
         return load_tot_area
 
-
     def check_islands(self):
         """ Check existence of islands. 
 
@@ -600,15 +599,15 @@ class PFactoryGrid(object):
         """
         value = -1
         if feature_name == "COI angle":
-            init_ang = self.get_initial_rotor_angles(machine_names=machines) 
-            num = 0 
-            denum = 0 
-            for i, m in enumerate(machines): 
-                num += (self.get_inertia(m)
-                        * self.get_number_of_parallell(m)
-                        * init_ang[i])
-                denum += self.get_inertia(m)*self.get_number_of_parallell(m)
-            value = num/denum
+            init_ang = self.get_initial_rotor_angles(machine_names=machines)
+            num = 0
+            denum = 0
+            for i, m in enumerate(machines):
+                num += (
+                    self.get_inertia(m) * self.get_number_of_parallell(m) * init_ang[i]
+                )
+                denum += self.get_inertia(m) * self.get_number_of_parallell(m)
+            value = num / denum
         elif feature_name == "Production":
             value = 0
             for machine in machines:
@@ -632,10 +631,11 @@ class PFactoryGrid(object):
                 consumption = self.get_active_power(load)
                 value += consumption[0]
         elif feature_name == "Inertia":
-            value = 0 
-            for machine in machines: 
-                value += (self.get_inertia(machine)
-                          * self.get_number_of_parallell(machine))
+            value = 0
+            for machine in machines:
+                value += self.get_inertia(machine) * self.get_number_of_parallell(
+                    machine
+                )
         elif feature_name == "Clearing time":
             print("Clearing time: NotImplementedError")
         return value
@@ -647,13 +647,28 @@ class PFactoryGrid(object):
             terminal: change loads connect to this terminal 
             new_load: new value of active power
         """
-        terminal = self.app.GetCalcRelevantObjects(terminal + ".ElmTerm")[0]
-        cubicles = terminal.GetCalcRelevantCubicles()
+        load = self.find_connected_element(terminal, ".ElmLod")
+        self.change_bus_load(load, new_load=new_load)
+
+    def find_connected_element(self, elm_name, elm_type):
+        """ Find connected elements of elm_type connected to an elm_name
+
+        Args:
+            elm_name: element that is relevant to find its connected element
+            elm_type: type of element which is wanted to find
+        Returns:
+            connected_element: name of connected element of elm_type
+        """
+        elm = self.app.GetCalcRelevantObjects(elm_name + ".*")[0]
+        cubicles = elm.GetCalcRelevantCubicles()
         for cubicle in cubicles:
-            print(cubicle.obj_id.loc_name)
-            if cubicle.obj_id.loc_name in self.get_list_of_loads():
-                self.change_bus_load(cubicle.obj_id.loc_name,
-                                     new_load=new_load)
+            connected_element = cubicle.obj_id.loc_name
+            try:
+                load = self.app.GetCalcRelevantObjects(connected_element + elm_type)[0]
+            except:
+                load = None
+            if not load is None:
+                return connected_element
 
     def set_out_of_service(self, elm_name, elm_type=None):
         """Take an element out of service or 
@@ -729,7 +744,7 @@ class PFactoryGrid(object):
         element_list = []
         for element in elements:
             if w_oos:
-                if element.outserv == 0: 
+                if element.outserv == 0:
                     element_list.append(element.loc_name)
             else:
                 element_list.append(element.loc_name)
@@ -743,10 +758,10 @@ class PFactoryGrid(object):
         Returns: 
             List of every bus name 
         """
-        
+
         return self.get_list_general(
-            self.app.GetCalcRelevantObjects("*.ElmTerm"),
-            w_oos)
+            self.app.GetCalcRelevantObjects("*.ElmTerm"), w_oos
+        )
 
     def get_list_of_loads(self, w_oos=False):
         """ Function for getting a list of all load names
@@ -756,10 +771,8 @@ class PFactoryGrid(object):
         Returns: 
             vector of load names
         """
-        return self.get_list_general(
-            self.app.GetCalcRelevantObjects("*.ElmLod"),
-            w_oos)
-    
+        return self.get_list_general(self.app.GetCalcRelevantObjects("*.ElmLod"), w_oos)
+
     def get_list_of_machines(self, w_oos=False):
         """ Function that gets a list of all machine names
 
@@ -768,10 +781,8 @@ class PFactoryGrid(object):
         Returns: 
             List of every machine name 
         """
-        return self.get_list_general(
-            self.app.GetCalcRelevantObjects("*.ElmSym"),
-            w_oos)
-    
+        return self.get_list_general(self.app.GetCalcRelevantObjects("*.ElmSym"), w_oos)
+
     def get_list_of_lines(self, w_oos=False):
         """ Get list of line names
 
@@ -780,10 +791,8 @@ class PFactoryGrid(object):
         Returns: 
             List of all line names 
         """
-        return self.get_list_general(
-            self.app.GetCalcRelevantObjects("*.ElmLne"),
-            w_oos)
-    
+        return self.get_list_general(self.app.GetCalcRelevantObjects("*.ElmLne"), w_oos)
+
     def get_list_of_area_buses(self, area):
         """ Get all buses within an area.
 
@@ -817,7 +826,6 @@ class PFactoryGrid(object):
             power_flows.append(self.get_branch_flow(line))
         output = pd.DataFrame(power_flows, columns=["Power flow"], index=lines)
         return output
-
 
     def is_ref(self, machine_name):
         """ check if machine is the reference machine 
@@ -853,7 +861,7 @@ class PFactoryGrid(object):
             Initial relative rotor angles for all machines 
         """
         var = "firel"
-        if machine_names is None: 
+        if machine_names is None:
             machines = self.app.GetCalcRelevantObjects("*.ElmSym")
         else:
             machines = []
@@ -889,8 +897,7 @@ class PFactoryGrid(object):
         freq_all = []
         for machine in machines:
             if self.check_if_in_service(machine):
-                time, freq = self.get_dynamic_results(machine + ".ElmSym",
-                                                      var[0])
+                time, freq = self.get_dynamic_results(machine + ".ElmSym", var[0])
                 freq_all.append(freq)
         return np.transpose(freq_all)
 
@@ -951,8 +958,7 @@ class PFactoryGrid(object):
         Returns: 
             the value of the machines inertia 
         """
-        machine_obj = self.app.GetCalcRelevantObjects(
-            machine_name + ".ElmSym")[0]
+        machine_obj = self.app.GetCalcRelevantObjects(machine_name + ".ElmSym")[0]
         machine_type = machine_obj.typ_id
         omega_0 = 50
         inertia = 2 * machine_type.sgn * machine_type.h / omega_0
@@ -1044,10 +1050,7 @@ class PFactoryGrid(object):
         """Trips a line at both ends"""
         i = 0
         for switch in self.lines[target_name].switches:
-            self.create_switch_event("",
-                                     time,
-                                     "trip-" + target_name + str(i),
-                                     switch)
+            self.create_switch_event("", time, "trip-" + target_name + str(i), switch)
             i += 1
 
     def delete_trip_line_event(self, target_name):
@@ -1115,8 +1118,7 @@ class PFactoryGrid(object):
         return self.ldf.Execute()
 
     def set_element_OPF_attr(
-        self, attr, element_type, relative_attr={"Pmin_uc": "P_max",
-                                                 "Pmax_uc": "P_max"}
+        self, attr, element_type, relative_attr={"Pmin_uc": "P_max", "Pmax_uc": "P_max"}
     ):
         """ Set attributes of element in optimal power flow
         Args:
@@ -1223,8 +1225,7 @@ class PFactoryGrid(object):
         gen_var = ["c:avgCosts", "c:Pdisp", "c:cst_disp"]
         for gen in gens:
             gen_name = gen.GetFullName().split("\\")[-1].split(".")[0]
-            opf_res[gen_name] = {i.split(":")[1]: gen.GetAttribute(i)
-                                 for i in gen_var}
+            opf_res[gen_name] = {i.split(":")[1]: gen.GetAttribute(i) for i in gen_var}
 
         loads = self.app.GetCalcRelevantObjects("*.ElmLod")
         load_var = ["m:P:bus1", "c:Pmism"]
@@ -1244,8 +1245,7 @@ class PFactoryGrid(object):
 
         grid = self.app.GetCalcRelevantObjects("*.ElmNet")[0]
         sys_var = ["c:cst_disp", "c:LossP", "c:LossQ", "c:GenP", "c:GenQ"]
-        opf_res["system"] = {i.split(":")[1]: grid.GetAttribute(i)
-                             for i in sys_var}
+        opf_res["system"] = {i.split(":")[1]: grid.GetAttribute(i) for i in sys_var}
         opf_res = pd.DataFrame(opf_res).unstack().dropna()
 
         return opf_res
