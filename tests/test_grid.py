@@ -161,9 +161,13 @@ def test_get_area_load(test_system):
 
 def test_check_islands(test_system):
     """ Check if the isalnds can be detected correctly. """
+    test_system.create_trip_line_event("Line12", 1.0)
+    test_system.create_trip_line_event("Line34", 1.0)
     test_system.initialize_and_run_dynamic_sim()
+    test_system.delete_switch_event("Line12")
+    test_system.delete_switch_event("Line34")
 
-    assert test_system.check_islands() == 1
+    assert test_system.check_islands() == 2
 
 
 def test_get_island_elements(test_system):
