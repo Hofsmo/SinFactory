@@ -433,3 +433,29 @@ def test_get_all_inter_area_lines(test_system):
 
     assert {('1', '2'): ["Line14",
                          "Line23"]} == test_system.get_all_inter_area_lines()
+
+
+def test_get_inter_area_isf(test_system):
+    """Test if the ISFs are calculated correctly."""
+    # First we will calculate the ISFs analytically.
+    # We enumerate the lines as follows
+    # 1: Line12, 2: Line14, 3: Line23, 4: Line34
+    # The adjacency matrix of the system is then.
+    A = np.array([[1, -1, 0, 0],
+                  [1, 0, 0, -1],
+                  [0, 1, -1, 0],
+                  [0, 0, 1, -1]])
+    # All the lines have the same reactance, which gives the following
+    # susceptance
+    b = 1/0.0850115
+    # The diagonal matrix of the system is
+    D = np.diag(4*[b])
+    X = np.zeros((4, 4))
+    X[1:, 1:] = np.linalg.inv((A.T@D@A)[1:, 1:])
+    ISF = D@A@X
+    np.testing.assert_allclose(ISF[[1, 2], :][:, [0, 1, 3]],
+                               test_system.get_inter_area_isf(balanced=2),
+                               rtol=0.1)
+
+
+

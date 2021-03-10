@@ -832,19 +832,25 @@ class PFactoryGrid(object):
                 tie_lines[areas] = lines
         return tie_lines
 
-    def get_branch_flow(self, line_name):
+    def get_branch_flow(self, line_name, unit=0):
         """ Function for getting the flow on a branch 
         
         Args: 
             line_name: Name of branch/line 
+            unit: What unit to use for returning branch flows:
+                0: Loading in percent of rating
+                1: Flow in MW
         Returns: 
             value of loading on branch 
         """
         # Find branch
         line = self.app.GetCalcRelevantObjects(line_name + ".ElmLne")[0]
-        return line.GetAttribute("c:loading")
+        if unit == 0:
+            return line.GetAttribute("c:loading")
+        else:
+            return line.GetAttribute("m:P:bus1")
 
-    def get_all_line_flows(self):
+    def get_all_line_flows(self, unit=0):
         """ Function for getting all line flows 
         
         Returns: 
@@ -853,7 +859,7 @@ class PFactoryGrid(object):
         lines = self.get_list_of_lines()
         power_flows = []
         for line in lines:
-            power_flows.append(self.get_branch_flow(line))
+            power_flows.append(self.get_branch_flow(line, unit))
         output = pd.DataFrame(power_flows, columns=["Power flow"], index=lines)
         return output
 
@@ -1304,8 +1310,8 @@ class PFactoryGrid(object):
         except AttributeError:
             return None
 
-    def caclulate_inter_area_isf(self, delta_p=5, balanced=0, power_control=0,
-                                 slack=0):
+    def get_inter_area_isf(self, delta_p=5, balanced=0, power_control=0,
+                           slack=0):
         """Method that calculates the injection shift factors for tie lines
 
         This method calculates the injection shift factors for tie lines
@@ -1337,20 +1343,22 @@ class PFactoryGrid(object):
         gens = self.get_list_of_machines()
         tie_lines = self.get_all_inter_area_lines()
         lines = list(itertools.chain.from_iterable(tie_lines.values()))
-        isf = np.zeros((len(gens), len(lines)))
+        isf = np.zeros((len(lines), len(gens)))
         for idx, gen in enumerate(gens):
             # Run load flow before changing the power
             self.run_load_flow(balanced, power_control, slack)
 
             # Get the load flow before changing power
-            y_0 = self.get_all_line_flows().loc[lines, "Power Flow"].to_numpy()
+            y_0 = self.get_all_line_flows(
+                unit=1).loc[lines, "Power flow"].to_numpy()
 
             # Change flow and calculate ISF
-            p = self.get_machine_gen(gen)
+            p = float(self.get_machine_gen(gen))
             self.change_machine_gen(gen, delta_p+p)
             self.run_load_flow(balanced, power_control, slack)
-            y_1 = self.get_all_line_flows().loc[lines, "Power Flow"].to_numpy()
-            isf[idx, :] = (y_1-y_0)/delta_p
+            y_1 = self.get_all_line_flows(
+                unit=1).loc[lines, "Power flow"].to_numpy()
+            isf[:, idx] = (y_1-y_0)/delta_p
 
             # Change the load back
             self.change_machine_gen(gen, p)
