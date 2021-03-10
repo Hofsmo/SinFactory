@@ -127,7 +127,7 @@ class PFactoryGrid(object):
         self,
         var_machines=("m:u:bus1", "m:P:bus1", "s:outofstep", "s:firel"),
         var_loads=("m:u:bus1", "m:P:bus1"),
-        var_lines=("m:u:bus1"),
+        var_lines=("m:u:bus1", "c:loading"),
         var_buses=("m:u", "b:ipat"),
     ):
         """ Initialize and run dynamic simulation.
@@ -269,7 +269,7 @@ class PFactoryGrid(object):
         self,
         var_machines=("m:u:bus1", "m:P:bus1", "s:outofstep", "s:firel"),
         var_loads=("m:u:bus1", "m:P:bus1"),
-        var_lines=("m:u:bus1"),
+        var_lines=("m:u:bus1", "c:loading"),
         var_buses=("m:u", "b:ipat"),
     ):
         """ Generate dictionary with variables for all machines
@@ -552,40 +552,6 @@ class PFactoryGrid(object):
             element_list[int(isolated_area_result[end_val]) - 1].append(elm)
         return element_list
 
-    def loads_connected(self, buses):
-        """ Return all loads connected to the buses.
-
-            Args:   
-                buses: list of buses 
-            Returns:   
-                loads: list of loads 
-        """
-        loads = []
-        for bus in buses:
-            bus_element = self.app.GetCalcRelevantObjects(bus + ".ElmTerm")[0]
-            cubs = bus_element.GetConnectedCubicles()
-            for cub in cubs:
-                if cub.obj_id.loc_name in self.get_list_of_loads():
-                    loads.append(cub.obj_id.loc_name)
-        return loads
-
-    def machines_connected(self, buses):
-        """ Return all machines connected to the buses.
-
-            Args:   
-                buses: list of buses 
-            Returns:   
-                machines: list of machines 
-        """
-        machines = []
-        for bus in buses:
-            bus_element = self.app.GetCalcRelevantObjects(bus + ".ElmTerm")[0]
-            cubs = bus_element.GetConnectedCubicles()
-            for cub in cubs:
-                if cub.obj_id.loc_name in self.get_list_of_machines():
-                    machines.append(cub.obj_id.loc_name)
-        return machines
-
     def get_init_value(self, feature_name, loads, machines, tripped_lines):
         """ Generate and return intial value of a feature. 
         
@@ -649,6 +615,36 @@ class PFactoryGrid(object):
         """
         load = self.find_connected_element(terminal, ".ElmLod")
         self.change_bus_load(load, new_load=new_load)
+
+    def loads_connected(self, buses):
+        """ Return all loads connected to the buses.
+
+            Args:   
+                buses: list of buses 
+            Returns:   
+                loads: list of loads 
+        """
+        loads = []
+        for bus in buses:
+            connected_load = self.find_connected_element(bus, ".ElmLod")
+            if not connected_load is None: 
+                loads.append(connected_load)
+        return loads
+
+    def machines_connected(self, buses):
+        """ Return all machines connected to the buses.
+
+            Args:   
+                buses: list of buses 
+            Returns:   
+                machines: list of machines 
+        """
+        machines = []
+        for bus in buses:
+            connected_machine = self.find_connected_element(bus, ".ElmSym")
+            if not connected_machine is None: 
+                machines.append(connected_machine)
+        return machines
 
     def find_connected_element(self, elm_name, elm_type):
         """ Find connected elements of elm_type connected to an elm_name
