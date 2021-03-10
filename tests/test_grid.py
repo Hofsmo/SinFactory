@@ -15,8 +15,7 @@ def test_system():
 
 def test_set_variables(test_system):
     """ Check if the dictionary is correctly made."""
-    var_names = ("n:fehz:bus1", "m:P:bus1",
-                 "s:firel", "s:outofstep", "n:u1:bus1")
+    var_names = ("n:fehz:bus1", "m:P:bus1", "s:firel", "s:outofstep", "n:u1:bus1")
     output = test_system.generate_variables(var_machines=var_names)
 
     assert output["SM1.ElmSym"][0] == var_names[0]
@@ -24,8 +23,7 @@ def test_set_variables(test_system):
 
 def test_run_dynamic_simulation(test_system):
     """Check if a dynamic simulation can be run."""
-    var_names = ("n:fehz:bus1", "m:P:bus1",
-                 "s:firel", "s:outofstep", "n:u1:bus1")
+    var_names = ("n:fehz:bus1", "m:P:bus1", "s:firel", "s:outofstep", "n:u1:bus1")
     variables = test_system.generate_variables(var_machines=var_names)
     test_system.prepare_dynamic_sim(variables=variables)
     test_system.run_dynamic_sim()
@@ -165,7 +163,7 @@ def test_check_islands(test_system):
     """ Check if the isalnds can be detected correctly. """
     test_system.initialize_and_run_dynamic_sim()
 
-    assert test_system.check_islands() == 2
+    assert test_system.check_islands() == 1
 
 
 def test_get_island_elements(test_system):
@@ -198,6 +196,12 @@ def test_change_connected_loads(test_system):
     assert init_load is not final_load
 
 
+def test_find_connected_element(test_system):
+    """ Test if connected elements can be found. """
+    load = test_system.find_connected_element("bus2", ".ElmLod")
+    assert load == "General Load(2)"
+
+
 def test_set_out_of_service(test_system):
     """Test if machines can be set out of service."""
     test_system.set_out_of_service("SM1", "machine")
@@ -220,7 +224,6 @@ def test_change_generator_inertia_constant(test_system):
     test_system.change_generator_inertia_constant("SM1", 4)
 
     assert new_inertia - old_inertia > 0
-
 
 
 def test_get_list_of_buses(test_system):
@@ -453,9 +456,8 @@ def test_get_inter_area_isf(test_system):
     X = np.zeros((4, 4))
     X[1:, 1:] = np.linalg.inv((A.T@D@A)[1:, 1:])
     ISF = D@A@X
+    # When comparing I have to slice out the lines that are not inter area and
+    # the bus that doesn't have a generator.
     np.testing.assert_allclose(ISF[[1, 2], :][:, [0, 1, 3]],
                                test_system.get_inter_area_isf(balanced=2),
                                rtol=0.1)
-
-
-
