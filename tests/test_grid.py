@@ -416,3 +416,52 @@ def test_get_area_buses(test_system):
     """Test if we can get the buses in the area correctly."""
 
     assert ["bus1", "bus2"] == test_system.get_list_of_area_buses("1")
+
+
+def test_get_list_of_line_buses(test_system):
+    """Test if we can get the buses connected to a line"""
+
+    assert ["bus2", "bus1"] == test_system.get_list_of_line_buses("Line12")
+
+
+def test_get_lines_between_areas(test_system):
+    """Test if we can get the buses between two areas"""
+    assert ["Line14", "Line23"] == test_system.get_lines_between_areas("1",
+                                                                       "2")
+
+
+def test_get_list_of_areas(test_system):
+    """Test if we can get the areas in the system."""
+    assert ["1", "2"] == test_system.get_list_of_areas()
+
+
+def test_get_all_inter_area_lines(test_system):
+    """Test if we can get all inter area lines."""
+
+    assert {('1', '2'): ["Line14",
+                         "Line23"]} == test_system.get_all_inter_area_lines()
+
+
+def test_get_inter_area_isf(test_system):
+    """Test if the ISFs are calculated correctly."""
+    # First we will calculate the ISFs analytically.
+    # We enumerate the lines as follows
+    # 1: Line12, 2: Line14, 3: Line23, 4: Line34
+    # The adjacency matrix of the system is then.
+    A = np.array([[1, -1, 0, 0],
+                  [1, 0, 0, -1],
+                  [0, 1, -1, 0],
+                  [0, 0, 1, -1]])
+    # All the lines have the same reactance, which gives the following
+    # susceptance
+    b = 1/0.0850115
+    # The diagonal matrix of the system is
+    D = np.diag(4*[b])
+    X = np.zeros((4, 4))
+    X[1:, 1:] = np.linalg.inv((A.T@D@A)[1:, 1:])
+    ISF = D@A@X
+    # When comparing I have to slice out the lines that are not inter area and
+    # the bus that doesn't have a generator.
+    np.testing.assert_allclose(ISF[[1, 2], :][:, [0, 1, 3]],
+                               test_system.get_inter_area_isf(balanced=2),
+                               rtol=0.1)
