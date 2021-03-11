@@ -129,6 +129,7 @@ class PFactoryGrid(object):
         var_loads=("m:u:bus1", "m:P:bus1"),
         var_lines=("m:u:bus1", "c:loading"),
         var_buses=("m:u", "b:ipat"),
+        sim_time=10.0
     ):
         """ Initialize and run dynamic simulation.
             Saving result file as attribute. 
@@ -142,7 +143,7 @@ class PFactoryGrid(object):
             var_lines=var_lines,
             var_buses=var_buses,
         )
-        self.prepare_dynamic_sim(variables=variables)
+        self.prepare_dynamic_sim(variables=variables, end_time=sim_time)
         self.run_dynamic_sim()
         self.result = self.get_results(variables=variables)
 
@@ -552,7 +553,7 @@ class PFactoryGrid(object):
             element_list[int(isolated_area_result[end_val]) - 1].append(elm)
         return element_list
 
-    def get_init_value(self, feature_name, loads, machines, tripped_lines):
+    def get_init_value(self, feature_name, loads, machines, tripped_lines, dynamic=False):
         """ Generate and return intial value of a feature. 
         
             Args: 
@@ -560,25 +561,42 @@ class PFactoryGrid(object):
                 loads: loads in an island
                 machines: machines in an island
                 tripped_lines: tripped lines 
+                dynamic: dynamic simulation or static (default)
             Returns: 
                 value: value of selected feature
         """
         value = -1
         if feature_name == "COI angle":
-            init_ang = self.get_initial_rotor_angles(machine_names=machines)
-            num = 0
-            denum = 0
-            for i, m in enumerate(machines):
-                num += (
-                    self.get_inertia(m) * self.get_number_of_parallell(m) * init_ang[i]
-                )
-                denum += self.get_inertia(m) * self.get_number_of_parallell(m)
-            value = num / denum
+            if dynamic: 
+                init_ang = self.get_initial_rotor_angles(machine_names=machines)
+                num = 0
+                denum = 0
+                for i, m in enumerate(machines):
+                    num += (
+                        self.get_inertia(m) * self.get_number_of_parallell(m) * init_ang[i]
+                    )
+                    denum += self.get_inertia(m) * self.get_number_of_parallell(m)
+                value = num / denum
+            else: 
+                init_ang = self.get_rotor_angles_static(machine_names=machines)
+                num = 0
+                denum = 0
+                for i, m in enumerate(machines):
+                    num += (
+                        self.get_inertia(m) * self.get_number_of_parallell(m) * init_ang[i]
+                    )
+                    denum += self.get_inertia(m) * self.get_number_of_parallell(m)
+                value = num / denum
         elif feature_name == "Production":
             value = 0
-            for machine in machines:
-                production = self.get_active_power(machine)
-                value += production[0]
+            if dynamic: 
+                for machine in machines:
+                    production = self.get_active_power(machine)
+                    value += production[0]
+            else: 
+                for machine in machines:
+                    machine_obj = self.app.GetCalcRelevantObjects(machine+".ElmSym")
+                    value += machine_obj.pgini
         elif feature_name == "Net flow":
             net_flow = 0
             for line in tripped_lines:
@@ -593,9 +611,14 @@ class PFactoryGrid(object):
             value = max_flow
         elif feature_name == "Load":
             value = 0
-            for load in loads:
-                consumption = self.get_active_power(load)
-                value += consumption[0]
+            if dynamic:
+                for load in loads:
+                    consumption = self.get_active_power(load)
+                    value += consumption[0]
+            else: 
+                for load in loads:
+                    load_obj = self.app.GetCalcRelevantObjects(machine+".ElmLod")
+                    value += load_obj.plini
         elif feature_name == "Inertia":
             value = 0
             for machine in machines:
@@ -849,6 +872,32 @@ class PFactoryGrid(object):
             pole_slip = True
 
         return pole_slip
+    
+    def get_rotor_angles_static(self, machine_names=None): 
+        """ Get relative rotor angles in load flow simulations
+        
+        Returns: 
+            Initial relative rotor angles for all machines 
+        """
+        if machine_names is None:
+            machines = self.app.GetCalcRelevantObjects("*.ElmSym")
+        else:
+            machines = []
+            for machine_name in machine_names:
+                machine_object = self.app.GetCalcRelevantObjects(
+                    machine_name + ".ElmSym"
+                )
+                machines.append(machine_object[0])
+        rotor_ang = []
+        for m in machines:
+            if self.check_if_in_service(m.loc_name):
+                u_t = m.GetAttribute("usetp")
+                i_t = m.GetAttribute("i1:bus1")
+                r_stator = m.typ_id.rstr
+                x_q = m.typ_id.xq
+                phi = np.arctan(u_t + i_t*(r_stator+x_q)) - 90
+                rotor_ang.append(phi)
+        return rotor_ang
 
     def get_initial_rotor_angles(self, machine_names=None):
         """ Get relative rotor angles intially 
