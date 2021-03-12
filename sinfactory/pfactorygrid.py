@@ -1166,6 +1166,25 @@ class PFactoryGrid(object):
         if sww:
             sww[0].Delete()
 
+    def clear_all_events(self):
+
+        # Get the event folder
+        evt_folder = self.app.GetFromStudyCase("IntEvt")
+        # Get a list of all events
+        events = evt_folder.GetContents("*")
+
+        # Loop through all events and use the correct delete function
+        for e in events:
+            evt_name = e.loc_name
+            evt_class = e.GetClassName()
+            if evt_class == "EvtSwitch":
+                self.delete_short_circuit(evt_name)
+            elif evt_class == "EvtShc":
+                if evt_name.split("-")[0] == "trip":
+                    self.delete_trip_line_event(evt_name)
+                else:
+                    self.delete_switch_event(evt_name)
+
     def get_events(self):
         """ Return a list of events """
         evt_folder = self.app.GetFromStudyCase("IntEvt")
@@ -1259,7 +1278,8 @@ class PFactoryGrid(object):
                         continue
                     setattr(gen, k, v)
 
-    def run_OPF(self, power_flow=0, obj_function="cst", **kwargs):
+
+    def run_OPF(self, power_flow=0, obj_function='cst', attributes={}):
         """Method for running optimal power flow
 
         Args:
@@ -1303,7 +1323,7 @@ class PFactoryGrid(object):
         self.opf.ipopt_ACDC = power_flow
         self.opf.iopt_obj = obj_function
 
-        for k, v in kwargs:
+        for k, v in attributes.items():
             setattr(self.opf, k, v)
 
         return self.opf.Execute()
@@ -1329,14 +1349,16 @@ class PFactoryGrid(object):
         lines = self.app.GetCalcRelevantObjects("*.ElmLne")
         line_var = ["m:P:bus1", "c:loading"]
         for line in lines:
-            line_name = line.GetFullName().split("\\")[-1].split(".")[0]
-            opf_res[line_name] = {
-                i.split(":")[1]: line.GetAttribute(i) for i in line_var
-            }
+            if not line.outserv:
+                line_name = line.GetFullName().split('\\')[-1].split('.')[0]
+                opf_res[line_name] = {
+                  i.split(':')[1]: line.GetAttribute(i) for i in line_var
+                }
 
-        grid = self.app.GetCalcRelevantObjects("*.ElmNet")[0]
-        sys_var = ["c:cst_disp", "c:LossP", "c:LossQ", "c:GenP", "c:GenQ"]
-        opf_res["system"] = {i.split(":")[1]: grid.GetAttribute(i) for i in sys_var}
+        grid = self.app.GetCalcRelevantObjects('*.ElmNet')[0]
+        sys_var = ['c:cst_disp', 'c:LossP', 'c:LossQ', 'c:GenP', 'c:GenQ']
+        opf_res['system'] = {i.split(':')[1]: grid.GetAttribute(i) for i in sys_var}
+
         opf_res = pd.DataFrame(opf_res).unstack().dropna()
 
         return opf_res
