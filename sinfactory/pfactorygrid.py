@@ -754,14 +754,14 @@ class PFactoryGrid(object):
 
         Args:
             elements: List of PowerFactory object containing elements.
-            w_oos: if list shall be with buses out of service (w oos) 
+            w_oos: if list shall be with buses out of service (w oos)
         Returns:
             list of elements.
         """
         element_list = []
         for element in elements:
-            if w_oos:
-                if element.outserv == 0:
+            if not w_oos:
+                if element.IsOutOfService() == 0:
                     element_list.append(element.loc_name)
             else:
                 element_list.append(element.loc_name)
@@ -775,10 +775,10 @@ class PFactoryGrid(object):
     def get_list_of_buses(self, w_oos=False):
         """ Function that gets a list of all buses
 
-        Args: 
-            w_oos: if list shall be with buses out of service (w oos) 
-        Returns: 
-            List of every bus name 
+        Args:
+            w_oos: if list shall be with buses out of service (w oos)
+        Returns:
+            List of every bus name
         """
 
         return self.get_list_general(
