@@ -551,7 +551,8 @@ class PFactoryGrid(object):
             element_list[int(isolated_area_result[end_val]) - 1].append(elm)
         return element_list
 
-    def get_init_value(self, feature_name, loads, machines, tripped_lines, dynamic=False):
+    def get_init_value(self, feature_name, loads, machines, tripped_lines,
+                       dynamic=False):
         """ Generate and return intial value of a feature. 
         
             Args: 
@@ -566,14 +567,17 @@ class PFactoryGrid(object):
         value = -1
         if feature_name == "COI angle":
             if dynamic: 
-                init_ang = self.get_initial_rotor_angles(machine_names=machines)
+                init_ang = self.get_initial_rotor_angles(
+                    machine_names=machines)
                 num = 0
                 denum = 0
                 for i, m in enumerate(machines):
                     num += (
-                        self.get_inertia(m) * self.get_number_of_parallell(m) * init_ang[i]
+                        self.get_inertia(m)
+                        * self.get_number_of_parallell(m) * init_ang[i]
                     )
-                    denum += self.get_inertia(m) * self.get_number_of_parallell(m)
+                    denum += self.get_inertia(
+                        m) * self.get_number_of_parallell(m)
                 value = num / denum
             else: 
                 init_ang = self.get_rotor_angles_static(machine_names=machines)
@@ -581,9 +585,11 @@ class PFactoryGrid(object):
                 denum = 0
                 for i, m in enumerate(machines):
                     num += (
-                        self.get_inertia(m) * self.get_number_of_parallell(m) * init_ang[i]
+                        self.get_inertia(
+                            m) * self.get_number_of_parallell(m) * init_ang[i]
                     )
-                    denum += self.get_inertia(m) * self.get_number_of_parallell(m)
+                    denum += self.get_inertia(
+                        m) * self.get_number_of_parallell(m)
                 value = num / denum
         elif feature_name == "Production":
             value = 0
@@ -593,7 +599,8 @@ class PFactoryGrid(object):
                     value += production[0]
             else: 
                 for machine in machines:
-                    machine_obj = self.app.GetCalcRelevantObjects(machine+".ElmSym")
+                    machine_obj = self.app.GetCalcRelevantObjects(
+                        machine+".ElmSym")
                     value += machine_obj.pgini
         elif feature_name == "Net flow":
             net_flow = 0
@@ -615,14 +622,14 @@ class PFactoryGrid(object):
                     value += consumption[0]
             else: 
                 for load in loads:
-                    load_obj = self.app.GetCalcRelevantObjects(machine+".ElmLod")
+                    load_obj = self.app.GetCalcRelevantObjects(
+                        machine+".ElmLod")
                     value += load_obj.plini
         elif feature_name == "Inertia":
             value = 0
             for machine in machines:
-                value += self.get_inertia(machine) * self.get_number_of_parallell(
-                    machine
-                )
+                value += self.get_inertia(
+                    machine) * self.get_number_of_parallell(machine)
         elif feature_name == "Clearing time":
             print("Clearing time: NotImplementedError")
         return value
@@ -760,11 +767,12 @@ class PFactoryGrid(object):
         """
         element_list = []
         for element in elements:
-            if w_oos:
-                if element.outserv == 0:
+            if not w_oos:
+                if element.IsOutOfService() == 0:
                     element_list.append(element.loc_name)
             else:
                 element_list.append(element.loc_name)
+
         return element_list
 
     def get_list_of_areas(self):
@@ -793,7 +801,8 @@ class PFactoryGrid(object):
         Returns: 
             vector of load names
         """
-        return self.get_list_general(self.app.GetCalcRelevantObjects("*.ElmLod"), w_oos)
+        return self.get_list_general(
+            self.app.GetCalcRelevantObjects("*.ElmLod"), w_oos)
 
     def get_list_of_machines(self, w_oos=False):
         """ Function that gets a list of all machine names
@@ -920,7 +929,7 @@ class PFactoryGrid(object):
         return pole_slip
     
     def get_rotor_angles_static(self, machine_names=None): 
-        """ Get relative rotor angles in load flow simulations
+        """ Get relative rotor angles from load flow simulations
         
         Returns: 
             Initial relative rotor angles for all machines 
@@ -935,18 +944,24 @@ class PFactoryGrid(object):
                 )
                 machines.append(machine_object[0])
         rotor_ang = []
+        phi_ref = 0
         for m in machines:
             if self.check_if_in_service(m.loc_name):
-                u_t = m.GetAttribute("usetp")
-                i_t = m.GetAttribute("i1:bus1")
+                u_t = m.GetAttribute("n:u1:bus1")
+                i_t = m.GetAttribute("m:i1:bus1")
                 r_stator = m.typ_id.rstr
                 x_q = m.typ_id.xq
-                phi = np.arctan(u_t + i_t*(r_stator+x_q)) - 90
-                rotor_ang.append(phi)
+                phi = np.arctan(u_t + i_t*(r_stator+x_q))*180/np.pi - 90
+                if self.is_ref(m.loc_name):
+                    rotor_ang.append(0)
+                    phi_ref = phi
+                else:
+                    rotor_ang.append(phi-phi_ref-m.GetAttribute(
+                        "n:phiurel:bus1"))
         return rotor_ang
 
     def get_initial_rotor_angles(self, machine_names=None):
-        """ Get relative rotor angles intially 
+        """ Get initial relative rotor angles 
         
         Returns: 
             Initial relative rotor angles for all machines 
@@ -972,6 +987,30 @@ class PFactoryGrid(object):
                     angle = angle.replace(",", ".")
                     angle = float(angle)
                 initial_ang.append(angle)
+            else:
+                initial_ang.append(0)
+        return initial_ang
+    
+    # TODO, this mehtod should be generalised and a test made
+    def get_generator_voltage_angles(self, machine_names=None):
+        """ Get machine voltage angles 
+        
+        Returns: 
+            Voltage angles for all machines 
+        """
+        if machine_names is None:
+            machines = self.app.GetCalcRelevantObjects("*.ElmSym")
+        else:
+            machines = []
+            for machine_name in machine_names:
+                machine_object = self.app.GetCalcRelevantObjects(
+                    machine_name + ".ElmSym"
+                )
+                machines.append(machine_object[0])
+        initial_ang = []
+        for m in machines:
+            if self.check_if_in_service(m.loc_name):
+                initial_ang.append(m.GetAttribute("n:phiurel:bus1"))
             else:
                 initial_ang.append(0)
         return initial_ang
@@ -1278,7 +1317,6 @@ class PFactoryGrid(object):
                         continue
                     setattr(gen, k, v)
 
-
     def run_OPF(self, power_flow=0, obj_function='cst', attributes={}):
         """Method for running optimal power flow
 
@@ -1336,7 +1374,8 @@ class PFactoryGrid(object):
         gen_var = ["c:avgCosts", "c:Pdisp", "c:cst_disp"]
         for gen in gens:
             gen_name = gen.GetFullName().split("\\")[-1].split(".")[0]
-            opf_res[gen_name] = {i.split(":")[1]: gen.GetAttribute(i) for i in gen_var}
+            opf_res[gen_name] = {i.split(":")[1]: gen.GetAttribute(i)
+                                 for i in gen_var}
 
         loads = self.app.GetCalcRelevantObjects("*.ElmLod")
         load_var = ["m:P:bus1", "c:Pmism"]
@@ -1357,7 +1396,8 @@ class PFactoryGrid(object):
 
         grid = self.app.GetCalcRelevantObjects('*.ElmNet')[0]
         sys_var = ['c:cst_disp', 'c:LossP', 'c:LossQ', 'c:GenP', 'c:GenQ']
-        opf_res['system'] = {i.split(':')[1]: grid.GetAttribute(i) for i in sys_var}
+        opf_res['system'] = {i.split(':')[1]: grid.GetAttribute(i)
+                             for i in sys_var}
 
         opf_res = pd.DataFrame(opf_res).unstack().dropna()
 

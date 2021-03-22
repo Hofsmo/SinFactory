@@ -34,7 +34,8 @@ def test_run_dynamic_simulation(test_system):
 
 def test_get_results(test_system):
     """Check if the result file is on the correct output format. """
-    var_names = ("n:fehz:bus1", "m:P:bus1", "s:firel", "s:outofstep", "n:u1:bus1")
+    var_names = ("n:fehz:bus1", "m:P:bus1", "s:firel", "s:outofstep",
+                 "n:u1:bus1")
     test_system.initialize_and_run_dynamic_sim(var_machines=var_names)
 
     assert test_system.result.columns[0][0] == "SM1"
@@ -272,7 +273,7 @@ def test_pole_slip(test_system):
     var_names = ("s:firel", "s:outofstep")
     test_system.initialize_and_run_dynamic_sim(var_machines=var_names)
 
-    assert test_system.pole_slip("SM1") == False
+    assert test_system.pole_slip("SM1") is False
 
 
 def test_get_initial_rotor_angles(test_system):
@@ -280,7 +281,17 @@ def test_get_initial_rotor_angles(test_system):
     var_names = ("s:firel", "s:outofstep")
     test_system.initialize_and_run_dynamic_sim(var_machines=var_names)
 
-    assert test_system.get_initial_rotor_angles()[0] == pytest.approx(0.0, abs=0.05)
+    assert test_system.get_initial_rotor_angles()[0] == pytest.approx(0.0,
+                                                                      abs=0.05)
+
+
+def test_get_initial_rotor_angles_from_static(test_system):
+    """Test if we can get inital rotor angles from a load flow."""
+    var_names = ("s:firel", "s:outofstep")
+    test_system.initialize_and_run_dynamic_sim(var_machines=var_names)
+
+    np.testing.assert_allclose(test_system.get_initial_rotor_angles(),
+                               test_system.get_rotor_angles_static())
 
 
 def test_get_voltage_magnitude(test_system):
