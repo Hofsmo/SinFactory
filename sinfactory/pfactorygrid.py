@@ -861,6 +861,72 @@ class PFactoryGrid(object):
                 tie_lines[areas] = lines
         return tie_lines
 
+    def get_bus_dict_general(self, units):
+    	""" Returns a dict of buses connected to units"""
+    	bus_dict = {}
+    	for u in units:
+    		con_buses = u.GetConnectedElements()
+    		if len(con_buses) == 1:
+    			bus_dict[u.cDisplayName] = con_buses[0].cDisplayName
+    		else:
+    			bus_dict[u.cDisplayName] = [i.cDisplayName for i in con_buses]
+    	return bus_dict
+
+    def get_dict_of_machine_buses(self):
+    	""" Returns a dict of buses connected to machines"""
+    	return self.get_bus_dict_general(self.app.GetCalcRelevantObjects("*.ElmSym"))
+
+    def get_dict_of_load_buses(self):
+    	""" Returns a dict of buses connected to loads"""
+    	return self.get_bus_dict_general(self.app.GetCalcRelevantObjects("*.ElmLod"))
+
+    def get_dict_of_transformer_buses(self):
+    	""" Returns a dict of buses connected to transformers"""
+    	return self.get_bus_dict_general(self.app.GetCalcRelevantObjects("*.ElmTr2"))
+
+    def get_param_val(self, units, param):
+    	""" Returns a dict of parameter values for specified units and parameter"""
+    	param_dict = {}
+    	for u in units:
+    		val = getattr(u, param)
+    		param_dict[u.cDisplayName] = val
+    	return param_dict
+
+    def get_machine_capacity(self):
+    	machines = self.app.GetCalcRelevantObjects("*.ElmSym")
+    	return self.get_param_val(machines, "Pmax_a")
+
+    def get_trafo_capacity(self):
+    	trafos = self.app.GetCalcRelevantObjects("*.ElmTr2")
+    	return self.get_param_val(trafos, "Snom")
+
+    def get_line_capacity(self):
+    	lines = self.app.GetCalcRelevantObjects("*.ElmLne")
+    	Inom = self.get_param_val(lines, "Inom")
+    	Unom = self.get_param_val(lines, "Unom")
+    	return {l: np.sqrt(3)*Inom[l]*Unom[l] for l in Inom.keys()}
+
+    def get_line_susceptance(self):
+    	lines = self.app.GetCalcRelevantObjects("*.ElmLne")
+    	line_reactance = self.get_param_val(lines, "X1")
+    	return {k: 1/v for k, v in line_reactance.items()}
+
+    def get_machine_gen_dict(self):
+    	machines = self.app.GetCalcRelevantObjects("*.ElmSym")
+    	return self.get_param_val(machines, "pgini")
+
+    def get_load_consumption(self):
+    	loads = self.app.GetCalcRelevantObjects("*.ElmLod")
+    	return self.get_param_val(loads, "plini")
+
+    def get_bus_phase_voltage(self):
+    	buses = self.app.GetCalcRelevantObjects("*.ElmTerm")
+    	return self.get_param_val(buses, "unknom")
+
+    def get_ref_machine_flag(self):
+    	machines = self.app.GetCalcRelevantObjects("*.ElmSym")
+    	return self.get_param_val(machines, "ip_ctrl")
+
     def get_branch_flow(self, line_name, unit=0):
         """ Function for getting the flow on a branch 
         
