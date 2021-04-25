@@ -170,11 +170,13 @@ def test_run_load_flow(test_system):
     assert test_system.run_load_flow(0, 0, 0) == 0
 
 
-def test_get_inter_area_isf(test_system):
+def test_calculate_isf(test_system):
     """Test if the ISFs are calculated correctly."""
     # First we will calculate the ISFs analytically.
     # We enumerate the lines as follows
     # 1: Line12, 2: Line14, 3: Line23, 4: Line34
+    # We enumerate the generatos as follows:
+    # 1: gen1, 2: gen2, 3: gen3
     # The adjacency matrix of the system is then.
     A = np.array([[1, -1, 0, 0],
                   [1, 0, 0, -1],
@@ -188,10 +190,17 @@ def test_get_inter_area_isf(test_system):
     X = np.zeros((4, 4))
     X[1:, 1:] = np.linalg.inv((A.T@D@A)[1:, 1:])
     ISF = D@A@X
-    # When comparing I have to slice out the lines that are not inter area and
-    # the bus that doesn't have a generator.
-    np.testing.assert_allclose(
-        ISF[[1, 2], :][:, [0, 1, 3]],
-        test_system.calculate_isf(
-            lines=test_system.get_all_inter_area_lines(), balanced=2),
-        rtol=0.1)
+
+    rows = np.array(
+        [list(test_system.lines).index(name) for name in ["Line12",
+                                                          "Line14",
+                                                          "Line23",
+                                                          "Line34"]])
+    
+    cols = np.array([list(test_system.gens).index(name) for name in ["SM1",
+                                                                     "SM2",
+                                                                     "SM3"]])
+    
+    isf = test_system.calculate_isf(balanced=2)
+    np.testing.assert_allclose(ISF[:, [0, 1, 3]],
+                               isf[rows[:, None], cols], rtol=0.1)

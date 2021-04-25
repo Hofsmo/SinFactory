@@ -1,5 +1,6 @@
 """Module for handling areas."""
 from sinfactory.bus import Bus
+from sinfactory.line import Line
 
 
 class Area(object):
@@ -25,3 +26,11 @@ class Area(object):
         except AttributeError:
             return None
 
+    def get_inter_area_lines(self, area):
+        """Get the lines between two areas
+
+        Args:
+            area: The other area to get the lines to.
+        """
+        inter_area = set(self.buses.cubs).intersection(set(area.buses.cubs))
+        return [Line(line) for line in inter_area]

@@ -19,9 +19,16 @@ class Bus(Component):
 
         self.loads = {}
         self.gens = {}
+
+        # If this makes initialisation too slow, only calculate this on
+        # request.
         for elm in elms:
             elm_name = elm.GetFullName()
             if "ElmLod" in elm_name:
                 self.loads[elm_name] = Load(elm)
             if "ElmSym" in elm_name:
                 self.gens[elm_name] = Generator(elm)
+
+        self.cubs = []
+        for elm in pf_object.GetConnectedCubicles():
+            self.cubs.append(elm)

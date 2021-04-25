@@ -429,32 +429,6 @@ class PFactoryGrid(object):
             if not load is None:
                 return connected_element
 
-    def get_lines_between_areas(self, area1, area2):
-        """Get all lines between two areas.
-            Args:
-                The two areas to find the lines between.
-        """
-        iab = [] 
-        a1b = area1.buses.values()
-        a2b = area2.buses.values()
-
-        for name, line in self.lines.items():
-            if ((line.f_bus in a1b and line.t_bus in a2b) or
-                    (line.t_bus in a1b and line.f_bus in a2b)):
-                iab[name] = line
-
-        return iab
-
-    def get_all_inter_area_lines(self):
-        """Get all inter area lines in the system"""
-        tie_lines = []
-        for areas in list(itertools.combinations(self.areas.values(), 2)):
-            lines = self.get_lines_between_areas(areas[0], areas[1])
-            if lines:
-                for line in lines:
-                    tie_lines.append(line)
-        return tie_lines
-
     def pole_slip(self, machine_name):
         """ Check if there has been a pole slip at any active machines 
 
@@ -955,8 +929,8 @@ class PFactoryGrid(object):
             """
 
         if not lines:
-            lines = self.lines.values()
-        
+            lines = self.lines
+
         gens = self.gens.values()
         isf = np.zeros((len(lines), len(gens)))
         for idx, gen in enumerate(gens):
@@ -965,13 +939,13 @@ class PFactoryGrid(object):
                 raise RuntimeError("Power flow did not converge")
 
             # Get the load flow before changing power
-            y_0 = [line.p for line in lines]
+            y_0 = [line.p for line in lines.values()]
 
             # Change flow and calculate ISF
             p = float(gen.p_set)
             gen.p_set = delta_p+p
             self.run_load_flow(balanced, power_control, slack)
-            y_1 = [line.p for line in lines]
+            y_1 = [line.p for line in lines.values()]
             isf[:, idx] = (np.array(y_1)-np.array(y_0))/delta_p
 
             # Change the load back
