@@ -10,6 +10,7 @@ from sinfactory.generator import Generator
 from sinfactory.load import Load
 from sinfactory.area import Area
 from sinfactory.bus import Bus
+from sinfactory.eigenresults import EigenValueResults
 
 
 class PFactoryGrid(object):
@@ -877,3 +878,29 @@ class PFactoryGrid(object):
             gen.p_set = p
 
         return isf
+
+    def calculate_eigenvalues(self, res_file="Modal_Analysis"):
+        """Method that calulates the eigenvalues of a system.
+        Args:
+            res_file: The name of the file to read the results from.
+        """
+        mode = self.app.GetFromStudyCase("ComMod")  # Modal analysis
+        mode.Execute()
+        res = self.app.GetFromStudyCase(res_file+'.ElmRes')
+        res.Load()  # load the data for reading
+        # We want to store a, b, frequency, and damping
+        df = pd.DataFrame(np.zeros((res.GetNumberOfRows(), 4)),
+                          columns=["a", "b", "damping", "frequency"])
+        min_damping = np.inf
+        for i in range(0, res.GetNumberOfRows()):
+            a = res.GetValue(i, 0)[1]
+            b = res.GetValue(i, 1)[1]
+            df.iloc[i, 3] = abs(b/2/np.pi)
+            df.iloc[i, 0] = a
+            df.iloc[i, 1] = b
+            df.iloc[i, 2] = -a/np.sqrt(a**2 + b**2)
+            if df.iloc[i, 2] < min_damping:
+                min_damping = df.iloc[i, 2]
+
+        return EigenValueResults(df, min_damping)
+
