@@ -14,18 +14,10 @@ class Generator(Unit):
         """
         super().__init__(pf_object)
 
-        self.p_set = pf_object.pgini*self.pf_object.ngnum
-        self.q_set = pf_object.qgini*self.pf_object.ngnum
-        
-        self.n_machines = pf_object.ngnum
-
-        self.rating = pf_object.ngnum*pf_object.P_max
-        self.h = pf_object.typ_id.h
-    
     @property
     def p_set(self):
         """Getter for active power."""
-        return self._p_set
+        return self.pf_object.ngnum*self.pf_object.pgini
 
     @p_set.setter
     def p_set(self, val):
@@ -37,13 +29,12 @@ class Generator(Unit):
 
         Args:
             val: The new value for the generation."""
-        self._p_set = val
         self.pf_object.pgini = val/self.pf_object.ngnum
     
     @property
     def q_set(self):
         """Getter for reactive power."""
-        return self._q_set
+        return self.pf_object.ngnum*self.pf_object.qgini
 
     @q_set.setter
     def q_set(self, val):
@@ -55,7 +46,6 @@ class Generator(Unit):
 
         Args:
             val: The new value for the generation."""
-        self._q_set = val
         self.pf_object.qgini = val/self.pf_object.ngnum
     
     @property
@@ -64,7 +54,7 @@ class Generator(Unit):
 
         It returns the rating of the generator considering that there can be
         multiple machines in parallel."""
-        return self._rating
+        return self.pf_object.P_max*self.pf_object.ngnum
 
     @rating.setter
     def rating(self, val):
@@ -74,12 +64,11 @@ class Generator(Unit):
 
         Args:
             val: The new value for the rating."""
-        self._rating = val
         self.pf_object.P_max = val/self.pf_object.ngnum
 
     @property
     def n_machines(self):
-        return self._n_machines
+        return self.pf_object.ngnum
 
     @n_machines.setter
     def n_machines(self, val):
@@ -97,7 +86,6 @@ class Generator(Unit):
         old_q = self.q_set
         
         # set the number of generators
-        self._n_machines = val
         self.pf_object.ngnum = val
        
         # Set the powers correctly
@@ -107,13 +95,10 @@ class Generator(Unit):
         # Set the rating correctly
         self.rating = self.pf_object.P_max*val
 
-        # Note if machine is the reference machine
-        self.is_ref = self.pf_object.ip_ctrl
-
     @property
     def h(self):
         """Getter for machine inertia."""
-        return self._h
+        return self.pf_object.typ_id.h
 
     @h.setter
     def h(self, val):
@@ -122,6 +107,5 @@ class Generator(Unit):
             
             Args:
                 val: Inertia constant for new machine."""
-        self._h = val
         self.pf_object.typ_id.h = val
 
