@@ -124,3 +124,4 @@ class Generator(Unit):
                 val: Inertia constant for new machine."""
         self._h = val
         self.pf_object.typ_id.h = val
+

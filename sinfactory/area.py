@@ -1,6 +1,7 @@
 """Module for handling areas."""
 from sinfactory.bus import Bus
 from sinfactory.line import Line
+import itertools
 
 
 class Area(object):
@@ -13,6 +14,10 @@ class Area(object):
         self.buses = {bus.cDisplayName: Bus(bus)
                       for bus in pf_object.GetBuses()}
         self.pf_object = pf_object
+
+        self.lines = {line.cDisplayName: Line(line) for line in
+                      pf_object.GetBranches() if "ElmLne" in
+                      line.GetFullName()}
 
     def get_inter_area_flow(self, area):
         """Get the flow between two areas.
@@ -32,5 +37,14 @@ class Area(object):
         Args:
             area: The other area to get the lines to.
         """
-        inter_area = set(self.buses.cubs).intersection(set(area.buses.cubs))
-        return [Line(line) for line in inter_area]
+        lines = {}
+        for line in itertools.chain(self.lines.values(),
+                                    area.lines.values()):
+            if (line.f_bus in self.pf_object.GetAll() and
+                    line.t_bus in area.pf_object.GetAll()):
+                lines[line.name] = line
+            if (line.t_bus in self.pf_object.GetAll() and
+                    line.f_bus in area.pf_object.GetAll()):
+                lines[line.name] = line
+
+        return lines

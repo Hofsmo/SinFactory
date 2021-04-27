@@ -23,13 +23,12 @@ def test_set_variables(test_system):
 
 def test_run_dynamic_simulation(test_system):
     """Check if a dynamic simulation can be run."""
-    var_names = ("n:fehz:bus1", "m:P:bus1", "s:firel", "s:outofstep", "n:u1:bus1")
-    variables = test_system.generate_variables(var_machines=var_names)
+    variables = {"SM1.ElmSym": ["n:fehz:bus1"]}
     test_system.prepare_dynamic_sim(variables=variables)
     test_system.run_dynamic_sim()
-    _, f = test_system.get_dynamic_results("SM1.ElmSym", "n:fehz:bus1")
+    res = test_system.get_results(variables)
 
-    assert f[20] == pytest.approx(50.0, abs=0.01)
+    assert res.iloc[20, :].to_numpy()[0] == pytest.approx(50.0, abs=0.01)
 
 
 def test_check_islands(test_system):
@@ -66,27 +65,6 @@ def test_pole_slip(test_system):
     assert test_system.pole_slip("SM1") is False
 
 
-def test_get_voltage_magnitude(test_system):
-    """Test if the voltage maagnitudes can be loaded."""
-    test_system.initialize_and_run_dynamic_sim()
-    voltage_magn = test_system.get_voltage_magnitude("SM1")
-    assert voltage_magn[10] == pytest.approx(1.0, abs=0.01)
-
-
-def test_get_freq(test_system):
-    """Test if the frequency-values are correct."""
-
-    assert test_system.get_freq()[10] == pytest.approx(50.0, abs=0.01)
-
-
-def test_get_rotor_angles(test_system):
-    """Test if the rotor angles-values are correct."""
-    time, rotor_ang = test_system.get_rotor_angles("SM1")
-    rotor_ang = np.transpose(rotor_ang)
-
-    assert rotor_ang[100] == pytest.approx(0.0, abs=0.01)
-
-
 def test_delete_short_circuit(test_system):
     """Check if a short circuit can be deleted."""
     monitor = {"bus1.ElmTerm": ["m:u"]}
@@ -94,9 +72,10 @@ def test_delete_short_circuit(test_system):
     test_system.delete_short_circuit("sc")
     test_system.prepare_dynamic_sim(variables=monitor)
     test_system.run_dynamic_sim()
-    _, v = test_system.get_dynamic_results("bus1.ElmTerm", "m:u")
+    
+    res = test_system.get_results(monitor)
 
-    assert v[30] == pytest.approx(1.0, abs=0.01)
+    assert res.iloc[30, :].to_numpy()[0] == pytest.approx(1.0, abs=0.01)
 
 
 def test_create_switch_evemt(test_system):
@@ -109,9 +88,9 @@ def test_create_switch_evemt(test_system):
     monitor = {"Line12.ElmLne": ["m:I:bus1"]}
     test_system.prepare_dynamic_sim(variables=monitor)
     test_system.run_dynamic_sim()
-    _, i = test_system.get_dynamic_results("Line12.ElmLne", "m:I:bus1")
+    res = test_system.get_results(monitor)
 
-    assert i[30] == pytest.approx(0.0, abs=0.01)
+    assert res.iloc[30, :].to_numpy()[0] == pytest.approx(0.0, abs=0.01)
 
 
 def test_delete_switch_evemt(test_system):
@@ -122,9 +101,9 @@ def test_delete_switch_evemt(test_system):
     test_system.delete_switch_event("trip-" + target_name)
     test_system.prepare_dynamic_sim(variables=monitor)
     test_system.run_dynamic_sim()
-    _, i = test_system.get_dynamic_results("Line12.ElmLne", "m:I:bus1")
+    res = test_system.get_results(monitor)
 
-    assert i[30] > 0.05
+    assert res.iloc[30, :].to_numpy()[0] > 0.05
 
 
 def test_create_trip_line_event(test_system):
@@ -134,9 +113,9 @@ def test_create_trip_line_event(test_system):
 
     test_system.prepare_dynamic_sim(variables=monitor)
     test_system.run_dynamic_sim()
-    _, i = test_system.get_dynamic_results("Line12.ElmLne", "m:I:bus1")
+    res = test_system.get_results(monitor)
 
-    assert i[30] == pytest.approx(0.0, abs=0.01)
+    assert res.iloc[30, :].to_numpy()[0] == pytest.approx(0.0, abs=0.01)
 
 
 def test_delete_trip_line_event(test_system):
@@ -146,9 +125,10 @@ def test_delete_trip_line_event(test_system):
 
     test_system.prepare_dynamic_sim(variables=monitor)
     test_system.run_dynamic_sim()
-    _, i = test_system.get_dynamic_results("Line12.ElmLne", "m:I:bus1")
+    
+    res = test_system.get_results(monitor)
 
-    assert i[30] > 0.05
+    assert res.iloc[30, :].to_numpy()[0] > 0.05
 
 
 def test_get_output_window_content(test_system):

@@ -155,42 +155,6 @@ class PFactoryGrid(object):
 
         return bool(self.sim.Execute())
 
-    def get_dynamic_results(self, elm_name, var_name):
-        """Method that returns results from a dynamic simulation.
-
-        Args:
-            elm_name (str): The name of the element to get the results for
-            var_name (str): The name of the variable to the results for
-
-        Returns:
-            tuple: A tuple containing the time and result vector.
-        """
-        # Get network element of interest.
-        element = self.app.GetCalcRelevantObjects(elm_name)[0]
-
-        # Load results from file
-        self.res.Load()
-
-        # Find column that holds results of interest
-        col_idx = self.res.FindColumn(element, var_name)
-
-        if col_idx == -1:
-            raise ValueError("Could not find : ", elm_name)
-
-        # Get time steps in the result file
-        t_steps = self.res.GetNumberOfRows()
-
-        # Read results and time
-        time = np.zeros(t_steps)
-        values = np.zeros(t_steps)
-
-        # Iterate through the rows in the result file
-        for i in range(t_steps):
-            time[i] = self.res.GetValue(i, -1)[1]
-            values[i] = self.res.GetValue(i, col_idx)[1]
-
-        return time, values
-
     def write_results_to_file(self, variables, filepath):
         """ Writes results to csv-file.
 
@@ -423,10 +387,11 @@ class PFactoryGrid(object):
         for cubicle in cubicles:
             connected_element = cubicle.obj_id.loc_name
             try:
-                load = self.app.GetCalcRelevantObjects(connected_element + elm_type)[0]
+                load = self.app.GetCalcRelevantObjects(
+                    connected_element + elm_type)[0]
             except:
                 load = None
-            if not load is None:
+            if load is not None:
                 return connected_element
 
     def pole_slip(self, machine_name):
@@ -498,7 +463,7 @@ class PFactoryGrid(object):
             else:
                 initial_ang.append(0)
         return initial_ang
-    
+
     # TODO, this mehtod should be generalised and a test made
     def get_generator_voltage_angles(self, machine_names=None):
         """ Get machine voltage angles 
@@ -522,46 +487,6 @@ class PFactoryGrid(object):
             else:
                 initial_ang.append(0)
         return initial_ang
-
-    def get_freq(self):
-        """ Get frequencies at all active machines 
-
-        Returns: 
-            frequency array for all machine for the whole time period 
-        """
-        # Get machine element (return list with one element)
-        var = ["n:fehz:bus1"]
-        freq_all = []
-        for name, gen in self.gens.items():
-            if gen.in_service:
-                time, freq = self.get_dynamic_results(name + ".ElmSym", var[0])
-                freq_all.append(freq)
-        return np.transpose(freq_all)
-
-    def get_rotor_angles(self, machine):
-        """ Function to get rotor angles 
-        """
-        var = ["s:firel"]
-        time, rotor = self.get_dynamic_results(machine + ".ElmSym", var[0])
-        return time, rotor
-
-    def get_voltage_magnitude(self, element):
-        """ Function to get voltage magnitude  
-        Args: 
-            element: to get voltage at (load, machine, etc)
-        """
-        var = "u"
-        voltages = self.result.loc[:, (element, var)].values
-        return voltages
-
-    def get_active_power(self, element):
-        """ Function to get voltage magnitude  
-        Args: 
-            element: to get voltage at (load, machine, etc)
-        """
-        var = "P"
-        power = self.result.loc[:, (element, var)].values
-        return power
 
     def get_machines_inertia_list(self):
         """

@@ -1,6 +1,5 @@
 """Module for handling lines in PowerFactory."""
 from sinfactory.component import Component
-from sinfactory.bus import Bus
 
 
 class Line(Component):
