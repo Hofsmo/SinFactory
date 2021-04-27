@@ -1,24 +1,30 @@
 """Module for handling lines in PowerFactory."""
+from sinfactory.component import Component
 
 
-class PowerFactoryLine(object):
+class Line(Component):
     """Class for interfacing with powerfactory lines."""
 
-    def __init__(self, app, line_obj):
+    def __init__(self, pf_object):
         """PowerFactoryLine constructor
 
         Args:
-            app: PowerFactory app object
-            line_obj: The line object
+            pf_object: The line object
         """
+        super().__init__(pf_object)
 
-        self.app = app
-        self.data_object = line_obj
+        self.f_bus = self.pf_object.bus1
+        self.t_bus = self.pf_object.bus2
+        self.switches = [self.pf_object.bus1.cpCB,
+                         self.pf_object.bus2.cpCB]
 
-        self.cubicles = [self.data_object.bus1,
-                         self.data_object.bus2]
-        
-        self.switches = []
-        for switch in self.app.GetCalcRelevantObjects("*.StaSwitch"):
-            if switch.fold_id in self.cubicles:
-                self.switches.append(switch)
+    @property
+    def loading(self):
+        """The loading of the line in percent of rating."""
+        return self.get_attribute("c:loading")
+
+    @property
+    def p(self):
+        """The active power flow on the line"""
+        return self.get_attribute("m:P:bus1")
+
