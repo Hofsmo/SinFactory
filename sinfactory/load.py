@@ -14,13 +14,10 @@ class Load(Unit):
         """
         super().__init__(pf_object)
         
-        self.p_set = pf_object.plini
-        self.q_set = pf_object.qlini
-
     @property
     def p_set(self):
         """Getter for active power."""
-        return self._p_set
+        return self.pf_object.plini
 
     @p_set.setter
     def p_set(self, val):
@@ -29,13 +26,12 @@ class Load(Unit):
         Args:
             val: The new value for the load."""
 
-        self._p_set = val
         self.pf_object.plini = val
 
     @property
     def q_set(self):
         """Getter for reactive power."""
-        return self._q_set
+        return self.pf_object.qlini
 
     @q_set.setter
     def q_set(self, val):
@@ -44,7 +40,6 @@ class Load(Unit):
         Args:
             val: The new value for the load."""
 
-        self._q_set = val
         self.pf_object.plini = val
 
 
