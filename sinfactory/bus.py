@@ -25,9 +25,9 @@ class Bus(Component):
         for elm in elms:
             elm_name = elm.GetFullName()
             if "ElmLod" in elm_name:
-                self.loads[elm_name] = Load(elm)
+                self.loads[elm.cDisplayName] = Load(elm)
             if "ElmSym" in elm_name:
-                self.gens[elm_name] = Generator(elm)
+                self.gens[elm.cDisplayName] = Generator(elm)
 
         self.cubs = []
         for elm in pf_object.GetConnectedCubicles():

@@ -48,3 +48,16 @@ class Area(object):
                 lines[line.name] = line
 
         return lines
+
+    def get_total_var(self, var):
+        """Return the total var in area."""
+        tot = 0
+        for bus in self.buses.values():
+            for elm in getattr(bus, var).values():
+                tot += elm.p_set
+        return tot
+
+
+
+
+    
