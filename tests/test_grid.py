@@ -3,6 +3,7 @@
 import pytest
 import numpy as np
 from sinfactory.pfactorygrid import PFactoryGrid
+from sinfactory.pfresults import PFResults
 
 
 @pytest.fixture(scope="module")
@@ -184,3 +185,18 @@ def test_calculate_isf(test_system):
     isf = test_system.calculate_isf(balanced=2)
     np.testing.assert_allclose(ISF[:, [0, 1, 3]],
                                isf[rows[:, None], cols], rtol=0.1)
+
+    def test_init_from_res(test_system):
+        """Check if we can initialise the system from a PFResults object."""
+        old_p = test_system.gens["SM1"].p_set
+        val = 13.3
+        
+        test_system.gens["SM1"].p_set = val
+        res = PFResults(test_system)
+        test_system.gens["SM1"].p_set = old_p
+        
+        test_system.init_system_from_res(res)
+
+        assert val == test_system.gens["SM1"].p_set
+        test_system.gens["SM1"].p_set = old_p
+
