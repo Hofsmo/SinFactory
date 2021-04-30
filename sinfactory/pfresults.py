@@ -15,7 +15,8 @@ class PFResults(object):
         # In case this slows down simulations that don't need all results
         # we can change to generate the results on demand.
         self.gen = pd.DataFrame(index=grid.gens.keys(), 
-                                columns=["p_set", "q_set", "n_machines", "h"])
+                                columns=["p_set", "q_set", "n_machines", "h",
+                                         "rating"])
         self._populate_df(self.gen, grid.gens.values())
 
         self.load = pd.DataFrame(index=grid.loads.keys(), 
@@ -27,20 +28,19 @@ class PFResults(object):
         self._populate_df(self.line, grid.lines.values())
 
         self.area = pd.DataFrame(index=grid.areas.keys(),
-                                 columns=["loads", "gens"]+list(
-                                     grid.areas.keys()))
+                                 columns=["loads", "gens"])
+
         for area in self.area.index:
             for column in self.area.columns:
                 if column in ["loads", "gens"]:
                     self.area.loc[area,
                                   column] = grid.areas[area].get_total_var(
                                       column)
-                else:
-                    self.area.loc[area,
-                                  column] = grid.areas[
-                                      area].get_inter_area_flow(
-                                          grid.areas[column])
-        self.area.dropna()
+
+        # The interchange between areas used to be included in the area report
+        # However, the power factory function for getting inter area flows,
+        # require a power flow to be run between each call. It was therefore
+        # dropped.
 
     def _populate_df(self, df, objs,):
         """Populate the result dataframe df with the results from objs."""

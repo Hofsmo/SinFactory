@@ -49,4 +49,3 @@ def test_area_results(test_system):
     res = PFResults(test_system)
     
     assert res.area.loc["1", "gens"] > 0
-    assert res.area.loc["1", "2"] > 0
