@@ -40,6 +40,6 @@ class Load(Unit):
         Args:
             val: The new value for the load."""
 
-        self.pf_object.plini = val
+        self.pf_object.qlini = val
 
 
