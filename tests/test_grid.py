@@ -204,3 +204,8 @@ def test_calculate_isf(test_system):
 def test_get_total_load(test_system):
     """Check if we can get teh total load correctly."""
     assert test_system.get_total_load() == 25
+
+
+def test_get_total_gen(test_system):
+    """Check if we can get the total production correctly."""
+    assert test_system.get_total_gen() == 25

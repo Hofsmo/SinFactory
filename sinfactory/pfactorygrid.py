@@ -918,3 +918,7 @@ class PFactoryGrid(object):
     def get_total_load(self):
         """Return the total load of the system."""
         return sum(load.p_set for load in self.loads.values())
+    
+    def get_total_gen(self):
+        """Return the total load of the system."""
+        return sum(gen.p_set for gen in self.gens.values())
