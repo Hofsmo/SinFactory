@@ -200,3 +200,7 @@ def test_calculate_isf(test_system):
         assert val == test_system.gens["SM1"].p_set
         test_system.gens["SM1"].p_set = old_p
 
+
+def test_get_total_load(test_system):
+    """Check if we can get teh total load correctly."""
+    assert test_system.get_total_load() == 25
