@@ -914,3 +914,7 @@ class PFactoryGrid(object):
         for obj in df.index:
             for prop in df.columns:
                 setattr(objs[obj], prop, df.loc[obj, prop])
+
+    def get_total_load(self):
+        """Return the total load of the system."""
+        return sum(load.p_set for load in self.loads.values())
