@@ -11,6 +11,7 @@ from sinfactory.load import Load
 from sinfactory.area import Area
 from sinfactory.bus import Bus
 from sinfactory.eigenresults import EigenValueResults
+from sinfactory.pfresults import PFResults
 
 
 class PFactoryGrid(object):
@@ -922,3 +923,7 @@ class PFactoryGrid(object):
     def get_total_gen(self):
         """Return the total load of the system."""
         return sum(gen.p_set for gen in self.gens.values())
+
+    def get_pf_results(self):
+        """Return a PFResults object."""
+        return PFResults(self)
