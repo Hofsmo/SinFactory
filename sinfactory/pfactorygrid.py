@@ -907,10 +907,10 @@ class PFactoryGrid(object):
 
     def init_system_from_res(self, res):
         """Initialise system from old results."""
-        self._init_objs_from_df(res.gen, self.gens)
-        self._init_objs_from_df(res.load, self.loads)
+        self.init_objs_from_df(res.gen, self.gens)
+        self.init_objs_from_df(res.load, self.loads)
 
-    def _init_objs_from_df(self, df, objs):
+    def init_objs_from_df(self, df, objs):
         """Initialise an object type from df."""
         for obj in df.index:
             for prop in df.columns:
