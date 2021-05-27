@@ -32,3 +32,8 @@ class Bus(Component):
         self.cubs = []
         for elm in pf_object.GetConnectedCubicles():
             self.cubs.append(elm)
+
+    @property
+    def u(self):
+        """The voltage magnitude of the bus in p.u."""
+        return self.get_attribute("m:u")
