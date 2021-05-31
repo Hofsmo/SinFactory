@@ -916,6 +916,18 @@ class PFactoryGrid(object):
             for prop in df.columns:
                 setattr(objs[obj], prop, df.loc[obj, prop])
 
+    def change_os(self, series):
+        """Initialise the grid from a pandas Series
+        
+        The panda series should have multi index, where the first index
+        is the type of component, loads, gens, lines or areas. The second index
+        should be the name of the component, and the third index is the
+        property to set."""
+
+        for idx in series.index:
+            obj = getattr(self, idx[0])
+            setattr(obj[idx[1]], idx[2], series[idx])
+
     def get_total_load(self):
         """Return the total load of the system."""
         return sum(load.p_set for load in self.loads.values())

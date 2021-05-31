@@ -2,6 +2,7 @@
 
 import pytest
 import numpy as np
+import pandas as pd
 from sinfactory.pfactorygrid import PFactoryGrid
 from sinfactory.pfresults import PFResults
 
@@ -209,3 +210,15 @@ def test_get_total_load(test_system):
 def test_get_total_gen(test_system):
     """Check if we can get the total production correctly."""
     assert test_system.get_total_gen() == 25
+
+def test_change_os(test_system):
+    """Check if we can correctly initialise a grid from a pandas Series."""
+    index_l = pd.MultiIndex.from_product([["loads"], ["General Load"],
+                                          ["p_set"]])
+    index_g = pd.MultiIndex.from_product([["gens"], ["SM1", "SM2"],
+                                          ["p_set"]])
+    test_system.change_os(
+        pd.Series([100.0, 50.0, 50.0], index= index_l.append(index_g)))
+
+    assert test_system.loads["General Load"].p_set == 100
+    assert test_system.gens["SM1"].p_set == 50
