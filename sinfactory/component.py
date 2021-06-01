@@ -14,7 +14,6 @@ class Component(object):
 
         self.pf_object = pf_object
         self.name = pf_object.cDisplayName
-        self.in_service = not pf_object.outserv
         self.area = pf_object.cpArea
 
     @property
