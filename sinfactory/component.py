@@ -20,7 +20,7 @@ class Component(object):
     @property
     def in_service(self):
         """Getter for if component is in service."""
-        return self._in_service
+        return not self.pf_object.outserv
 
     @in_service.setter
     def in_service(self, in_service):
@@ -28,7 +28,6 @@ class Component(object):
 
         Args:
             in_service: If component should be in service or not."""
-        self._in_service = in_service
         self.pf_object.outserv = not in_service
 
     def get_attribute(self, attribute):
