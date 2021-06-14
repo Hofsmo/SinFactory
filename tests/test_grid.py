@@ -35,8 +35,8 @@ def test_run_dynamic_simulation(test_system):
 
 def test_check_islands(test_system):
     """ Check if the isalnds can be detected correctly. """
-    test_system.create_trip_line_event("Line12", 1.0)
-    test_system.create_trip_line_event("Line34", 1.0)
+    test_system.create_switch_event(test_system.lines["Line12"], 1.0)
+    test_system.create_switch_event(test_system.lines["Line34"], 1.0)
     test_system.initialize_and_run_dynamic_sim()
     test_system.delete_switch_event("Line12")
     test_system.delete_switch_event("Line34")
@@ -84,9 +84,9 @@ def test_create_switch_evemt(test_system):
     """Check if a switch event can be created."""
     time = 0.1
     target_name = "Line12"
-    switch_1 = test_system.lines[target_name].switches[0]
 
-    test_system.create_switch_event("", time, "trip-" + target_name, switch_1)
+    test_system.create_switch_event(test_system.lines[target_name],
+                                    time, "trip-" + target_name)
     monitor = {"Line12.ElmLne": ["m:I:bus1"]}
     test_system.prepare_dynamic_sim(variables=monitor)
     test_system.run_dynamic_sim()
@@ -103,31 +103,6 @@ def test_delete_switch_evemt(test_system):
     test_system.delete_switch_event("trip-" + target_name)
     test_system.prepare_dynamic_sim(variables=monitor)
     test_system.run_dynamic_sim()
-    res = test_system.get_results(monitor)
-
-    assert res.iloc[30, :].to_numpy()[0] > 0.05
-
-
-def test_create_trip_line_event(test_system):
-    """Check if a line tripping event can be made."""
-    test_system.create_trip_line_event("Line12", 0.1)
-    monitor = {"Line12.ElmLne": ["m:I:bus1"]}
-
-    test_system.prepare_dynamic_sim(variables=monitor)
-    test_system.run_dynamic_sim()
-    res = test_system.get_results(monitor)
-
-    assert res.iloc[30, :].to_numpy()[0] == pytest.approx(0.0, abs=0.01)
-
-
-def test_delete_trip_line_event(test_system):
-    """Check if a line tripping event can be deleted."""
-    test_system.delete_trip_line_event("Line12")
-    monitor = {"Line12.ElmLne": ["m:I:bus1"]}
-
-    test_system.prepare_dynamic_sim(variables=monitor)
-    test_system.run_dynamic_sim()
-    
     res = test_system.get_results(monitor)
 
     assert res.iloc[30, :].to_numpy()[0] > 0.05

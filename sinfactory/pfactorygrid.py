@@ -514,17 +514,14 @@ class PFactoryGrid(object):
         inertia_list = np.column_stack([machine_name, inertias])
         return inertia_list
 
-    def create_short_circuit(self, target_name, time, name):
+    def create_short_circuit(self, target, time, name):
         """Create a three phase short circuit.
 
         Args:
-            target_name: Component to short.
+            target: Component to short.
             time: Start time of the short circuit.
             name: Name of the event.
         """
-        # Get the element where the fault is applied
-        target = self.app.GetCalcRelevantObjects(target_name)
-
         # Get the event folder
         evt_folder = self.app.GetFromStudyCase("IntEvt")
 
@@ -543,7 +540,7 @@ class PFactoryGrid(object):
 
         # Set time, target and type of short circuit
         sc.time = time
-        sc.p_target = target[0]
+        sc.p_target = target.pf_object
         sc.i_shc = 0
 
     def delete_short_circuit(self, name):
@@ -563,18 +560,17 @@ class PFactoryGrid(object):
         if scc:
             scc[0].Delete()
 
-    def create_switch_event(self, target_name, time, name, target=None):
+    def create_switch_event(self, target, time, name=None):
         """Create a switching event.
 
         Args:
-            target_name: Name of component to switch.
+            target: Component to switch.
             time: When to switch
             name: Name of the event.
             comp: Object to create the event for
         """
-        if target is None:
-            # Get the element where the fault is applied
-            target = self.app.GetCalcRelevantObjects(target_name)[0]
+        if not name:
+            name = target.name + "_switch"
 
         # Get the event folder
         evt_folder = self.app.GetFromStudyCase("IntEvt")
@@ -594,19 +590,7 @@ class PFactoryGrid(object):
 
         # Set time, target and type of short circuit
         sw.time = time
-        sw.p_target = target
-
-    def create_trip_line_event(self, target_name, time):
-        """Trips a line at both ends"""
-        i = 0
-        for switch in self.lines[target_name].switches:
-            self.create_switch_event("", time, "trip-" + target_name + str(i), switch)
-            i += 1
-
-    def delete_trip_line_event(self, target_name):
-        """Trips a line at both ends"""
-        for i in ["0", "1"]:
-            self.delete_switch_event("trip-" + target_name + i)
+        sw.p_target = target.pf_object
 
     def delete_switch_event(self, name):
         """Delete a switch event.

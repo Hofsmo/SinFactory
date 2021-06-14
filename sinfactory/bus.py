@@ -37,3 +37,11 @@ class Bus(Component):
     def u(self):
         """The voltage magnitude of the bus in p.u."""
         return self.get_attribute("m:u")
+
+    @property
+    def island_id(self):
+        """The island id of the bus.
+        
+        In case the system has been split up into different islands
+        the buses in the same island will have the same id."""
+        return self.get_attribute("b:ipat")
