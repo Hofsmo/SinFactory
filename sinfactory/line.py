@@ -13,8 +13,10 @@ class Line(Component):
         """
         super().__init__(pf_object)
 
-        self.f_bus = self.pf_object.bus1
-        self.t_bus = self.pf_object.bus2
+        self.f_bus_cub = self.pf_object.bus1
+        self.t_bus_cub = self.pf_object.bus2
+        self.f_bus = pf_object.bus1.GetFullName().split("\\")[-2].split(".")[0]
+        self.t_bus = pf_object.bus2.GetFullName().split("\\")[-2].split(".")[0]
         self.switches = [self.pf_object.bus1.cpCB,
                          self.pf_object.bus2.cpCB]
 

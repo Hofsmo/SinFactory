@@ -40,11 +40,11 @@ class Area(object):
         lines = {}
         for line in itertools.chain(self.lines.values(),
                                     area.lines.values()):
-            if (line.f_bus in self.pf_object.GetAll() and
-                    line.t_bus in area.pf_object.GetAll()):
+            if (line.f_bus_cub in self.pf_object.GetAll() and
+                    line.t_bus_cub in area.pf_object.GetAll()):
                 lines[line.name] = line
-            if (line.t_bus in self.pf_object.GetAll() and
-                    line.f_bus in area.pf_object.GetAll()):
+            if (line.t_bus_cub in self.pf_object.GetAll() and
+                    line.f_bus_cub in area.pf_object.GetAll()):
                 lines[line.name] = line
 
         return lines

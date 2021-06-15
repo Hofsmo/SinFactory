@@ -16,11 +16,13 @@ class PFResults(object):
         # we can change to generate the results on demand.
         self.gen = pd.DataFrame(index=grid.gens.keys(), 
                                 columns=["p_set", "q_set", "n_machines", "h",
-                                         "rating"])
+                                         "rating", "in_service",
+                                         "u_rel_angle"])
         self._populate_df(self.gen, grid.gens.values())
 
         self.load = pd.DataFrame(index=grid.loads.keys(), 
-                                 columns=["p_set", "q_set"])
+                                 columns=["p_set", "q_set", "island_id",
+                                          "in_service"])
         self._populate_df(self.load, grid.loads.values())
 
         self.line = pd.DataFrame(index=grid.lines.keys(),
@@ -47,4 +49,3 @@ class PFResults(object):
         for obj in objs:
             for prop in df.columns:
                 df.loc[obj.name, prop] = getattr(obj, prop)
-

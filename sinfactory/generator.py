@@ -108,3 +108,8 @@ class Generator(Unit):
             Args:
                 val: Inertia constant for new machine."""
         self.pf_object.typ_id.h = val
+
+    @property
+    def u_rel_angle(self):
+        """The voltage angle relative to the reference bus"""
+        self.get_attribute("n:phiurel:bus1")
