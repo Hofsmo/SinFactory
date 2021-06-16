@@ -112,4 +112,4 @@ class Generator(Unit):
     @property
     def u_rel_angle(self):
         """The voltage angle relative to the reference bus"""
-        self.get_attribute("n:phiurel:bus1")
+        return self.get_attribute("n:phiurel:bus1")
