@@ -86,14 +86,14 @@ class Generator(Unit):
         old_q = self.q_set
         
         # set the number of generators
-        self.pf_object.ngnum = val
+        self.pf_object.ngnum = int(val)
        
         # Set the powers correctly
         self.p_set = old_p
         self.q_set = old_q
 
         # Set the rating correctly
-        self.rating = self.pf_object.P_max*val
+        self.rating = self.pf_object.P_max*int(val)
 
     @property
     def h(self):

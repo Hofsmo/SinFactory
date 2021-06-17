@@ -41,10 +41,19 @@ class PFResults(object):
         # However, the power factory function for getting inter area flows,
         # require a power flow to be run between each call. It was therefore
         # dropped.
-
+        
     def _populate_df(self, df, objs,):
         """Populate the result dataframe df with the results from objs."""
         for obj in objs:
             for prop in df.columns:
                 df.loc[obj.name, prop] = getattr(obj, prop)
+                
+    @staticmethod
+    def get_attributes(units, properties=["p_set", "q_set"]):
+        """Get specified properties in a DF from a set of units, i.e. loads"""
+        df = pd.DataFrame()
+        for unit in units.items():
+            for prop in properties:
+                df.at[unit[0], prop] = getattr(unit[1], prop)
+        return df
 

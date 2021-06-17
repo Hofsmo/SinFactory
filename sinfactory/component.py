@@ -15,6 +15,7 @@ class Component(object):
         self.pf_object = pf_object
         self.name = pf_object.cDisplayName
         self.area = pf_object.cpArea
+        self.areaname = str(pf_object.cpArea).split("\\")[-1].split(".")[0]
 
     @property
     def in_service(self):
