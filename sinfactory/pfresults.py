@@ -49,3 +49,13 @@ class PFResults(object):
         for obj in objs:
             for prop in df.columns:
                 df.loc[obj.name, prop] = getattr(obj, prop)
+
+    @staticmethod
+    def get_attributes(units, properties=["p_set", "q_set"]):
+        """Get specified properties in a DF from a set of
+        units, i.e. loads"""
+        df = pd.DataFrame()
+        for unit in units.items():
+            for prop in properties:
+                df.at[unit[0], prop] = getattr(unit[1], prop)
+        return df

@@ -86,7 +86,7 @@ class Generator(Unit):
         old_q = self.q_set
         
         # set the number of generators
-        self.pf_object.ngnum = val
+        self.pf_object.ngnum = int(val)
        
         # Set the powers correctly
         self.p_set = old_p
