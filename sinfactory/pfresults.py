@@ -21,7 +21,7 @@ class PFResults(object):
         self._populate_df(self.gen, grid.gens.values())
 
         self.load = pd.DataFrame(index=grid.loads.keys(), 
-                                 columns=["p_set", "q_set", "island_id",
+                                 columns=["p_set", "q_set",
                                           "in_service"])
         self._populate_df(self.load, grid.loads.values())
 
