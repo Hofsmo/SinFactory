@@ -130,13 +130,15 @@ class PFactoryGrid(object):
         var_loads=("m:u:bus1", "m:P:bus1"),
         var_lines=("m:u:bus1", "c:loading"),
         var_buses=("m:u", "b:ipat"),
-        sim_time=10.0
+        sim_time=10.0,
+        sim_type='rms'
     ):
         """ Initialize and run dynamic simulation.
             Saving result file as attribute. 
 
         Args:
             var_names: Variables to track. 
+            sim_type: Type of dynamic simulation - 'rms' or 'emt'
         """
         variables = self.generate_variables(
             var_machines=var_machines,
@@ -144,7 +146,9 @@ class PFactoryGrid(object):
             var_lines=var_lines,
             var_buses=var_buses,
         )
-        self.prepare_dynamic_sim(variables=variables, end_time=sim_time)
+        self.prepare_dynamic_sim(sim_type=sim_type,
+                                 variables=variables,
+                                 end_time=sim_time)
         self.run_dynamic_sim()
         self.result = self.get_results(variables=variables)
 
