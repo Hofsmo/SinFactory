@@ -5,7 +5,7 @@ import itertools
 import numpy as np
 import pandas as pd
 import powerfactory as pf
-from sinfactory.line import Line
+from sinfactory.line import Line, InterLine
 from sinfactory.generator import Generator
 from sinfactory.load import Load
 from sinfactory.area import Area
@@ -51,7 +51,25 @@ class PFactoryGrid(object):
         self.areas = {area.GetFullName(
         ).split("\\")[-1].split(".")[0]: Area(area)
                       for area in self.app.GetCalcRelevantObjects("*.ElmArea")}
-        
+
+        # The powerfactory caclulation of inter area flows can be a bit
+        # sketchy. Here I create objects of inter area lines that keep track
+        # of the flow direction. That is, make sure that all lines between
+        # the same areas have a positive flow defined in the same direction,
+        # relative to the areas.
+        self.inter_lines = {}
+        for areas in itertools.combinations(self.areas, 2):
+            temp = self.areas[areas[0]].get_inter_area_lines(
+                self.areas[areas[1]])
+            if temp:
+                key = areas[0] + "_" + areas[1]
+                self.inter_lines[key] = []
+                for line in temp.values():
+                    self.inter_lines[key].append(
+                        InterLine(line,
+                                  self.areas[areas[0]],
+                                  self.areas[areas[1]]))
+
         self.buses = {bus.cDisplayName: Bus(bus) for bus in
                       self.app.GetCalcRelevantObjects("*.ElmTerm")}
 

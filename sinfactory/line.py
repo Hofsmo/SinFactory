@@ -30,3 +30,21 @@ class Line(Component):
         """The active power flow on the line"""
         return self.get_attribute("m:P:bus1")
 
+class InterLine(Line):
+    """Class for interfacing with lines between areas."""
+    def __init__(self, line, f_area, t_area):
+        super().__init__(line.pf_object)
+        
+        self.f_area = f_area
+        self.t_area = t_area
+
+        if self.f_bus_cub in f_area.pf_object.GetAll():
+            self.direction = 1
+        else:
+            self.direction = -1
+    
+    @property
+    def p(self):
+        """The active power flow on the line in the direction of from area
+        to to area"""
+        return self.direction*super().p

@@ -39,10 +39,10 @@ class PFResults(object):
                                   column] = grid.areas[area].get_total_var(
                                       column)
 
-        # The interchange between areas used to be included in the area report
-        # However, the power factory function for getting inter area flows,
-        # require a power flow to be run between each call. It was therefore
-        # dropped.
+        self.inter_area = pd.DataFrame(index=grid.inter_lines.keys(),
+                                       columns=["p"])
+        for name, lines in grid.inter_lines.items():
+            self.inter_area.loc[name, "p"] = sum(line.p for line in lines)
 
     def _populate_df(self, df, objs,):
         """Populate the result dataframe df with the results from objs."""
