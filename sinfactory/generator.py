@@ -113,3 +113,15 @@ class Generator(Unit):
     def u_rel_angle(self):
         """The voltage angle relative to the reference bus"""
         return self.get_attribute("n:phiurel:bus1")
+    
+    @property
+    def u_mag(self):
+        """The voltage magnitude"""
+        return self.get_attribute("m:u:bus1")
+    
+    @property
+    def xdss(self):
+        """The subtransient reactance"""
+        return self.pf_object.typ_id.xdss
+    
+    
