@@ -17,7 +17,7 @@ class PFResults(object):
         self.gen = pd.DataFrame(index=grid.gens.keys(), 
                                 columns=["p_set", "q_set", "n_machines", "h",
                                          "rating", "in_service",
-                                         "u_rel_angle"])
+                                         "u_rel_angle", "u_mag", "xdss"])
         self._populate_df(self.gen, grid.gens.values())
 
         self.load = pd.DataFrame(index=grid.loads.keys(), 
