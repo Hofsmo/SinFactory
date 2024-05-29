@@ -5,7 +5,7 @@ import itertools
 import numpy as np
 import pandas as pd
 import powerfactory as pf
-from sinfactory.line import Line, InterLine
+from sinfactory.line import Line, InterLine, AreaInterface
 from sinfactory.generator import Generator
 from sinfactory.load import Load
 from sinfactory.area import Area
@@ -58,17 +58,21 @@ class PFactoryGrid(object):
         # the same areas have a positive flow defined in the same direction,
         # relative to the areas.
         self.inter_lines = {}
+        self.interfaces = {}
         for areas in itertools.combinations(self.areas, 2):
             temp = self.areas[areas[0]].get_inter_area_lines(
                 self.areas[areas[1]])
             if temp:
                 key = areas[0] + "_" + areas[1]
-                self.inter_lines[key] = []
-                for line in temp.values():
-                    self.inter_lines[key].append(
-                        InterLine(line,
-                                  self.areas[areas[0]],
-                                  self.areas[areas[1]]))
+                inter_lines = []
+                for idx, line in enumerate(temp.values()):
+                    inter_lines.append(InterLine(line,
+                                                 self.areas[areas[0]],
+                                                 self.areas[areas[1]]))
+                    self.inter_lines[line.name] = inter_lines[idx]
+                
+                self.interfaces[key] = AreaInterface(inter_lines, areas[0],
+                                                     areas[1])
 
         self.buses = {bus.cDisplayName: Bus(bus) for bus in
                       self.app.GetCalcRelevantObjects("*.ElmTerm")}
@@ -831,9 +835,9 @@ class PFactoryGrid(object):
 
     def calculate_isf(self, lines=None,
                       delta_p=5, balanced=0, power_control=0, slack=0):
-        """Method that calculates the injection shift factors for tie lines
+        """Method that calculates the injection shift factors for lines
 
-        This method calculates the injection shift factors for tie lines
+        This method calculates the injection shift factors for lines
         given all generators. These factors can be used for redispatching
         generation to alleviate tie line overloads. The method can be
         extended to also consider changes in loads. The resulting matrix is

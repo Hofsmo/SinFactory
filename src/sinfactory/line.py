@@ -33,6 +33,13 @@ class Line(Component):
 class InterLine(Line):
     """Class for interfacing with lines between areas."""
     def __init__(self, line, f_area, t_area):
+        """Constructor for inter area lines.
+
+        Args:
+            line: Line between two areas.
+            f_area: The area the flow is directed away from
+            t_area: The area the flow is directed towards
+        """
         super().__init__(line.pf_object)
         
         self.f_area = f_area
@@ -48,3 +55,25 @@ class InterLine(Line):
         """The active power flow on the line in the direction of from area
         to to area"""
         return self.direction*super().p
+
+
+class AreaInterface():
+    """Class for handling interfaces between areas."""
+
+    def __init__(self, lines, f_area, t_area):
+        """Constructor for inter area interfaces.
+
+        Args:
+            lines: The lines between the areas
+            f_area: The area the flow is directed away from
+            t_area: The area the flow is directed towards
+        """
+
+        self.lines = lines
+        self.f_area = f_area
+        self.t_area = t_area
+
+    @property
+    def p(self):
+        """The active power flow on the interface."""
+        return sum(line.p for line in self.lines)

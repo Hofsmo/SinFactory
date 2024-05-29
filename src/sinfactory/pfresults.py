@@ -41,8 +41,8 @@ class PFResults(object):
 
         self.inter_area = pd.DataFrame(index=grid.inter_lines.keys(),
                                        columns=["p"])
-        for name, lines in grid.inter_lines.items():
-            self.inter_area.loc[name, "p"] = sum(line.p for line in lines)
+        for name, line in grid.inter_lines.items():
+            self.inter_area.loc[name, "p"] = line.p
 
     def _populate_df(self, df, objs,):
         """Populate the result dataframe df with the results from objs."""
